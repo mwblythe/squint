@@ -1,6 +1,9 @@
 package squint
 
-import "reflect"
+import (
+	"log"
+	"reflect"
+)
 
 // Bind($str) treats a string as a bind rather than SQL fragment
 type Bind string
@@ -16,6 +19,7 @@ type Options struct {
 	Tag       string // field tag to use
 	KeepNil   bool   // keep nil struct/map field values
 	KeepEmpty bool   // keep empty string struct/map field values
+	Log       bool   // log queries?
 }
 
 // Builder is the core of public squint interactions.
@@ -41,6 +45,11 @@ func (b *Builder) Build(bits ...interface{}) (string, []interface{}) {
 
 	for _, bit := range bits {
 		q.Add(bit)
+	}
+
+	if b.Log {
+		log.Println("SQL:", q.sql.val)
+		log.Println("BINDS:", q.binds.vals)
 	}
 
 	return q.sql.val, q.binds.vals
