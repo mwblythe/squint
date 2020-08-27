@@ -102,9 +102,10 @@ func (s *SquintSuite) TestInsert() {
 		binds{5, "small"},
 		"INSERT INTO junk",
 		struct {
-			Id   int
-			Size string
-		}{5, "small"},
+			Id     int
+			Size   string
+			Rating int `db:"omitempty"`
+		}{5, "small", 0},
 	)
 }
 

@@ -135,9 +135,10 @@ When mapping `struct` fields into database columns, by default the names are use
 
 ```go
 type User struct {
-  Id        int                      // column is Id
-  FirstName string `db:"first_name"` // column is first_name
-  Username  string `db:"-"`          // skip this one
+  Id        int                            // column is Id
+  FirstName string `db:"first_name"`       // column is first_name
+  Username  string `db:"-"`                // skip this one
+  ManagerId int    `db:"mgr_id,omitempty"` // skip if empty (0)
 }
 ```
 
@@ -187,7 +188,16 @@ What if only `updates.Department` is set? The zero value for a `string` is the e
 
 Note that `KeepEmpty` only applies to `strings`. This is because the zero values of other basic types are more common as real values, zero (`0`) in particular. So you can't really tell if one of these was explicltly set or not. How to handle this?
 
-The `KeepNil` option is essentially the same as `KeepEmpty`, but applies to pointers. So, you can do:
+If you're sure the zero value is not a value you want saved, you can set `omitempty` in a particular field's `db` tag.
+
+```go
+type Updates struct {
+  Name string
+  Age  int    `db:"omitempty"`
+}
+```
+
+Otherwise, you can leverage the `KeepNil` option. It is essentially the same as `KeepEmpty`, but applies to pointers. So, you can do:
 
 ```go
 type Updates struct {

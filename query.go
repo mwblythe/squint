@@ -215,7 +215,7 @@ func (q *query) siftMap(src *reflect.Value) ([]string, []interface{}) {
 
 	// build list of cols and value map
 	for iter.Next() {
-		if v := iter.Value().Interface(); q.keepValue(v) {
+		if v := iter.Value().Interface(); q.keepValue(v, false) {
 			k := iter.Key().String()
 			cols = append(cols, k)
 			valmap[k] = v
@@ -239,12 +239,12 @@ func (q *query) siftStruct(src *reflect.Value) ([]string, []interface{}) {
 	binds := make([]interface{}, src.NumField())[:0]
 
 	for i := 0; i < src.NumField(); i++ {
-		name := q.mapField(src.Type().Field(i))
+		name, omitEmpty := q.mapField(src.Type().Field(i))
 		if name == "" {
 			continue
 		}
 
-		if v := src.Field(i).Interface(); q.keepValue(v) {
+		if v := src.Field(i).Interface(); q.keepValue(v, omitEmpty) {
 			cols = append(cols, name)
 			binds = append(binds, v)
 		}
@@ -256,7 +256,7 @@ func (q *query) siftStruct(src *reflect.Value) ([]string, []interface{}) {
 // keepValue determines whether a given value should be kept when sifting
 // a struct or map into columns and binds. This is controlled by the
 // KeepNil and KeepEmpty options.
-func (q *query) keepValue(i interface{}) bool {
+func (q *query) keepValue(i interface{}, omitEmpty bool) bool {
 	v := reflect.ValueOf(i)
 
 	if !q.opt.KeepNil {
@@ -268,28 +268,37 @@ func (q *query) keepValue(i interface{}) bool {
 		}
 	}
 
-	if !q.opt.KeepEmpty {
-		if v.Kind() == reflect.String {
-			return !v.IsZero()
-		}
+	if !q.opt.KeepEmpty && v.Kind() == reflect.String {
+		omitEmpty = true
+	}
+
+	if omitEmpty {
+		return !v.IsZero()
 	}
 
 	return true
 }
 
 // mapField maps a struct field to a db column name
-func (q *query) mapField(field reflect.StructField) string {
-	var name string
-
+func (q *query) mapField(field reflect.StructField) (name string, omitEmpty bool) {
 	// check for unexported fields
 	if field.PkgPath != "" {
-		return ""
+		return
 	}
 
 	// now the field tag
 	if q.opt.Tag != "" {
-		if name = field.Tag.Get(q.opt.Tag); name == "-" {
-			return ""
+		tag := field.Tag.Get(q.opt.Tag)
+		if tag == "-" {
+			return
+		}
+
+		for _, t := range strings.Split(tag, ",") {
+			if t == "omitempty" {
+				omitEmpty = true
+			} else {
+				name = t
+			}
 		}
 	}
 
@@ -298,5 +307,5 @@ func (q *query) mapField(field reflect.StructField) string {
 		name = field.Name
 	}
 
-	return name
+	return
 }
