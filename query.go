@@ -128,8 +128,9 @@ func (q *query) addPointer(v reflect.Value) {
 		q.sql.Add("?")
 		q.binds.Add(nil)
 	} else if v.Elem().Kind() == reflect.String {
-		// treat string reference same as Bind
-		q.Add(Bind(v.Elem().String()))
+		// treat string reference as a bind
+		q.sql.Add("?")
+		q.binds.Add(v.Elem().Interface())
 	} else {
 		q.Add(v.Elem().Interface())
 	}
