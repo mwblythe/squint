@@ -5,7 +5,7 @@ import (
 	"reflect"
 )
 
-// Bind($str) treats a string as a bind rather than SQL fragment
+// Bind treats a string as a bind rather than SQL fragment
 type Bind string
 
 // Condition will conditionally process a list of arguments
@@ -20,7 +20,7 @@ type Builder struct {
 	Options
 }
 
-// New returns a new Builder with default options
+// NewBuilder returns a new Builder with the supplied options
 func NewBuilder(options ...Option) *Builder {
 	var b Builder
 	b.Option(Tag("db"))
@@ -69,7 +69,7 @@ func (b *Builder) If(condition bool, bits ...interface{}) Condition {
 	return If(condition, bits...)
 }
 
-// If: package level version, in case Builder instance isn't handy
+// If : package level version, in case Builder instance isn't handy
 func If(condition bool, bits ...interface{}) Condition {
 	return Condition{
 		isTrue: condition,

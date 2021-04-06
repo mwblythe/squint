@@ -48,6 +48,7 @@ func (s *sqlBinds) Add(args ...interface{}) {
 // to support special handling based on context
 type sqlContext uint8
 
+// supported contexts
 const (
 	BASE sqlContext = iota
 	INSERT

@@ -20,7 +20,7 @@ type DBSuite struct {
 
 type QueryTestInfo struct {
 	inBits   []interface{}
-	outSql   string
+	outSQL   string
 	outBinds []interface{}
 }
 
@@ -75,7 +75,7 @@ func (s *DBSuite) testBridge(b *Bridge) {
 }
 
 func (s *DBSuite) expectExec(info *QueryTestInfo) {
-	s.mock.ExpectExec(info.outSql).WithArgs(info.getValues()...).WillReturnResult(sqlmock.NewResult(0, 1))
+	s.mock.ExpectExec(info.outSQL).WithArgs(info.getValues()...).WillReturnResult(sqlmock.NewResult(0, 1))
 }
 
 func (s *DBSuite) testExec(b *Bridge) {
@@ -83,7 +83,7 @@ func (s *DBSuite) testExec(b *Bridge) {
 
 	// a basic call to straight Exec
 	s.expectExec(info)
-	_, err := s.db.Exec(info.outSql, info.outBinds...)
+	_, err := s.db.Exec(info.outSQL, info.outBinds...)
 	s.Nil(err)
 
 	// bridged Exec
@@ -101,7 +101,7 @@ func (s *DBSuite) testExec(b *Bridge) {
 func (s *DBSuite) expectQueryRow(info *QueryTestInfo) {
 	row := sqlmock.NewRows([]string{"id"})
 	row.AddRow(10)
-	s.mock.ExpectQuery(info.outSql).WithArgs(info.getValues()...).WillReturnRows(row)
+	s.mock.ExpectQuery(info.outSQL).WithArgs(info.getValues()...).WillReturnRows(row)
 }
 
 func (s *DBSuite) testQueryRow(b *Bridge) {
@@ -111,7 +111,7 @@ func (s *DBSuite) testQueryRow(b *Bridge) {
 
 	// straight QueryRow
 	s.expectQueryRow(info)
-	err := s.db.QueryRow(info.outSql, info.outBinds...).Scan(&id)
+	err := s.db.QueryRow(info.outSQL, info.outBinds...).Scan(&id)
 	s.Nil(err)
 
 	// bridged QueryRow
@@ -136,7 +136,7 @@ func (s *DBSuite) expectQuery(info *QueryTestInfo) {
 	rows := sqlmock.NewRows([]string{"id", "status"})
 	rows.AddRow(10, "active")
 	rows.AddRow(10, "retired")
-	s.mock.ExpectQuery(info.outSql).WithArgs(info.getValues()...).WillReturnRows(rows)
+	s.mock.ExpectQuery(info.outSQL).WithArgs(info.getValues()...).WillReturnRows(rows)
 }
 
 func (s *DBSuite) testQuery(b *Bridge) {
@@ -145,7 +145,7 @@ func (s *DBSuite) testQuery(b *Bridge) {
 
 	// straight Query
 	s.expectQuery(info)
-	rows, err := s.db.Query(info.outSql, info.outBinds...)
+	rows, err := s.db.Query(info.outSQL, info.outBinds...)
 	s.Nil(err)
 	s.NotNil(rows)
 	s.Nil(rows.Close())
@@ -166,7 +166,7 @@ func (s *DBSuite) testQuery(b *Bridge) {
 
 	// bridged Select
 	var result []struct {
-		Id     int
+		ID     int
 		Status string
 	}
 
@@ -180,7 +180,7 @@ func (s *DBSuite) testQuery(b *Bridge) {
 
 func (s *DBSuite) getTestInfo(bits ...interface{}) *QueryTestInfo {
 	info := QueryTestInfo{inBits: bits}
-	info.outSql, info.outBinds = s.builder.Build(info.inBits...)
+	info.outSQL, info.outBinds = s.builder.Build(info.inBits...)
 	return &info
 }
 

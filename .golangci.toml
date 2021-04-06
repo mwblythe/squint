@@ -1,0 +1,6 @@
+[linters]
+disable-all = true
+enable = [ "staticcheck", "golint" ]
+
+[issues]
+include = [ "EXC0002" ]

@@ -146,15 +146,15 @@ type User struct {
 
 ### Options
 
-The `Builder` has a few options to control behavior. (Options are handled via functions)
+The `Builder` uses functional options to control behavior. They and their defaults are:
 
 ```go
 Tag(string)       // tag name for field mapping ("db")
 NilValues(bool)   // keep nil struct/map field values? (false)
 EmptyValues(bool) // keep empty string struct/map field values? (false)
-LogQuery(bool)    // log queries
-LogBinds(bool)    // log bind values from queries
-Log(bool)         // shorthand to log both queries AND binds
+LogQuery(bool)    // log queries (false)
+LogBinds(bool)    // log bind values from queries (false)
+Log(bool)         // shorthand to log both queries AND binds (false)
 ```
 
 These can all be set via `NewBuilder()`:

@@ -40,41 +40,49 @@ type Bridge struct {
 	target Target
 }
 
+// Exec executes a query that doesn't return rows
 func (b *Bridge) Exec(bits ...interface{}) (sql.Result, error) {
 	sql, binds := b.Build(bits...)
 	return b.target.Exec(sql, binds...)
 }
 
+// Query executes a query that returns rows, typically a SELECT
 func (b *Bridge) Query(bits ...interface{}) (*sql.Rows, error) {
 	sql, binds := b.Build(bits...)
 	return b.target.Query(sql, binds...)
 }
 
+// QueryRow executes a query that is expected to return at most one row
 func (b *Bridge) QueryRow(bits ...interface{}) *sql.Row {
 	sql, binds := b.Build(bits...)
 	return b.target.QueryRow(sql, binds...)
 }
 
+// MustExec executes a query and panics on error
 func (b *Bridge) MustExec(bits ...interface{}) sql.Result {
 	sql, binds := b.Build(bits...)
 	return b.target.MustExec(sql, binds...)
 }
 
+// Queryx is the same as Query but returns a *sqlx.Rows
 func (b *Bridge) Queryx(bits ...interface{}) (*sqlx.Rows, error) {
 	sql, binds := b.Build(bits...)
 	return b.target.Queryx(sql, binds...)
 }
 
+// QueryRowx is the same as QueryRow but returns a *sqlx.Row
 func (b *Bridge) QueryRowx(bits ...interface{}) *sqlx.Row {
 	sql, binds := b.Build(bits...)
 	return b.target.QueryRowx(sql, binds...)
 }
 
+// Get retrieves a single row and scans into dest
 func (b *Bridge) Get(dest interface{}, bits ...interface{}) error {
 	sql, binds := b.Build(bits...)
 	return b.target.Get(dest, sql, binds...)
 }
 
+// Select executes a query and scans the into dest (a slice)
 func (b *Bridge) Select(dest interface{}, bits ...interface{}) error {
 	sql, binds := b.Build(bits...)
 	return b.target.Select(dest, sql, binds...)
@@ -109,14 +117,14 @@ func (db *DB) bridgeTx(tx *sqlx.Tx) *Tx {
 
 // Beginx starts and bridges a transaction
 func (db *DB) Beginx() (*Tx, error) {
-	if tx, err := db.DB.Beginx(); err == nil {
-		return db.bridgeTx(tx), nil
-	} else {
+	tx, err := db.DB.Beginx()
+	if err != nil {
 		return nil, err
 	}
+	return db.bridgeTx(tx), nil
 }
 
-// Beginx starts and bridges a transaction, but panics on error
+// MustBegin starts and bridges a transaction, but panics on error
 func (db *DB) MustBegin() *Tx {
 	return db.bridgeTx(db.DB.MustBegin())
 }

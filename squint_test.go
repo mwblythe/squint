@@ -66,11 +66,11 @@ func (s *SquintSuite) TestPointer() {
 
 func (s *SquintSuite) TestStruct() {
 	s.check(
-		"SELECT * FROM users WHERE Id = ? AND name = ? AND Status IN ( ?, ? )",
+		"SELECT * FROM users WHERE ID = ? AND name = ? AND Status IN ( ?, ? )",
 		binds{10, "Frank", 2, 4},
 		"SELECT * FROM users WHERE",
 		struct {
-			Id     int
+			ID     int
 			Name   string `db:"name"`
 			Secret bool   `db:"-"`
 			wealth float32
@@ -108,11 +108,11 @@ func (s *SquintSuite) TestInsert() {
 	)
 
 	s.check(
-		"INSERT INTO junk ( Id, Size ) VALUES ( ?, ? )",
+		"INSERT INTO junk ( ID, Size ) VALUES ( ?, ? )",
 		binds{5, "small"},
 		"INSERT INTO junk",
 		struct {
-			Id     int
+			ID     int
 			Size   string
 			Rating int `db:"omitempty"`
 		}{5, "small", 0},
