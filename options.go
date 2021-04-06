@@ -2,9 +2,9 @@ package squint
 
 // Options for the squint Builder
 type Options struct {
-	Tag       string // field tag to use
-	KeepNil   bool   // keep nil struct/map field values
-	KeepEmpty bool   // keep empty string struct/map field values
+	tag       string // field tag to use
+	keepNil   bool   // keep nil struct/map field values
+	keepEmpty bool   // keep empty string struct/map field values
 	logQuery  bool   // log queries?
 	logBinds  bool   // log binds?
 }
@@ -19,19 +19,19 @@ func (o *Options) Option(options ...Option) {
 
 func Tag(tag string) Option {
 	return func(o *Options) {
-		o.Tag = tag
+		o.tag = tag
 	}
 }
 
 func NilValues(b bool) Option {
 	return func(o *Options) {
-		o.KeepNil = b
+		o.keepNil = b
 	}
 }
 
 func EmptyValues(b bool) Option {
 	return func(o *Options) {
-		o.KeepEmpty = b
+		o.keepEmpty = b
 	}
 }
 

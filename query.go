@@ -262,7 +262,7 @@ func (q *query) siftStruct(src *reflect.Value) ([]string, []interface{}) {
 func (q *query) keepValue(i interface{}, omitEmpty bool) bool {
 	v := reflect.ValueOf(i)
 
-	if !q.opt.KeepNil {
+	if !q.opt.keepNil {
 		switch v.Kind() {
 		case reflect.Ptr, reflect.Map, reflect.Slice:
 			return !v.IsNil()
@@ -271,7 +271,7 @@ func (q *query) keepValue(i interface{}, omitEmpty bool) bool {
 		}
 	}
 
-	if !q.opt.KeepEmpty && v.Kind() == reflect.String {
+	if !q.opt.keepEmpty && v.Kind() == reflect.String {
 		omitEmpty = true
 	}
 
@@ -290,8 +290,8 @@ func (q *query) mapField(field reflect.StructField) (name string, omitEmpty bool
 	}
 
 	// now the field tag
-	if q.opt.Tag != "" {
-		tag := field.Tag.Get(q.opt.Tag)
+	if q.opt.tag != "" {
+		tag := field.Tag.Get(q.opt.tag)
 		if tag == "-" {
 			return
 		}
