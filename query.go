@@ -62,7 +62,7 @@ var inRX = regexp.MustCompile(`(?i)\bIN\s*$`)
 // query represents a single SQL query that is being built.
 // The query type is the heavy lifter of the package
 type query struct {
-	opt   *Options
+	opt   Options
 	sql   sqlBuf
 	binds sqlBinds
 }
@@ -84,29 +84,31 @@ func (q *query) Context() sqlContext {
 
 // Add a piece to the query
 func (q *query) Add(bit interface{}) {
-	v := reflect.ValueOf(bit)
-
-	if (v.Type() == reflect.TypeOf(Condition{})) {
-		if i := bit.(Condition); i.isTrue {
-			for n := range i.bits {
-				q.Add(i.bits[n])
+	switch b := bit.(type) {
+	case Condition:
+		if b.isTrue {
+			for n := range b.bits {
+				q.Add(b.bits[n])
 			}
 		}
-		return
-	}
-
-	switch v.Kind() {
-	case reflect.String:
-		q.addString(v)
-	case reflect.Ptr:
-		q.addPointer(v)
-	case reflect.Array, reflect.Slice:
-		q.addSlice(v)
-	case reflect.Map, reflect.Struct:
-		q.addComplex(v)
+	case Option:
+		q.opt.Option(b)
 	default:
-		q.sql.Add("?")
-		q.binds.Add(bit)
+		v := reflect.ValueOf(bit)
+
+		switch v.Kind() {
+		case reflect.String:
+			q.addString(v)
+		case reflect.Ptr:
+			q.addPointer(v)
+		case reflect.Array, reflect.Slice:
+			q.addSlice(v)
+		case reflect.Map, reflect.Struct:
+			q.addComplex(v)
+		default:
+			q.sql.Add("?")
+			q.binds.Add(bit)
+		}
 	}
 }
 
@@ -210,7 +212,7 @@ func (q *query) sift(v *reflect.Value) ([]string, []interface{}) {
 
 // siftMap will sift a map into cols + binds
 func (q *query) siftMap(src *reflect.Value) ([]string, []interface{}) {
-	cols := make([]string, src.Len())[:0]
+	cols := make([]string, 0, src.Len())
 	valmap := make(map[string]interface{})
 	iter := src.MapRange()
 
@@ -236,8 +238,8 @@ func (q *query) siftMap(src *reflect.Value) ([]string, []interface{}) {
 
 // siftStruct will sift a struct into cols + binds
 func (q *query) siftStruct(src *reflect.Value) ([]string, []interface{}) {
-	cols := make([]string, src.NumField())[:0]
-	binds := make([]interface{}, src.NumField())[:0]
+	cols := make([]string, 0, src.NumField())
+	binds := make([]interface{}, 0, src.NumField())
 
 	for i := 0; i < src.NumField(); i++ {
 		name, omitEmpty := q.mapField(src.Type().Field(i))

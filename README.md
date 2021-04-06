@@ -113,7 +113,7 @@ b.Build("UPDATE user SET", updates, "WHERE id =", id)
 
 ### Pointers
 
-Generally, pointers are dereferenced and their values used as if they were passed directly. If the pointer is `nil`, it will map to a `NULL` value. Pointers can be useful in a `struct` as discussed below with the `KeepNil` option.
+Generally, pointers are dereferenced and their values used as if they were passed directly. If the pointer is `nil`, it will map to a `NULL` value. Pointers can be useful in a `struct` as discussed below with the `NilValues` option.
 
 ### Conditions
 
@@ -127,7 +127,7 @@ b.Build(
 )
 ```
 
-You can include any number of arguments in `If()`, and they will only be processed by `Build()` if the condition is true.
+You can include any number of arguments in `If()`, and they will only be processed by `Build()` if the condition is true. This can also be called as `squint.If()`
 
 ### Field Mapping
 
@@ -146,24 +146,39 @@ type User struct {
 
 ### Options
 
-The `Builder` has a few options to control behavior. They and their defaults are:
+The `Builder` has a few options to control behavior. (Options are handled via functions)
 
 ```go
-Tag       string // tag name for field mapping ("db")
-KeepNil   bool   // keep nil struct/map field values? (false)
-KeepEmpty bool   // keep empty string struct/map field values? (false)
+Tag(string)       // tag name for field mapping ("db")
+NilValues(bool)   // keep nil struct/map field values? (false)
+EmptyValues(bool) // keep empty string struct/map field values? (false)
+LogQuery(bool)    // log queries
+LogBinds(bool)    // log bind values from queries
+Log(bool)         // shorthand to log both queries AND binds
 ```
 
-These can all be set directly on the `Builder`:
+These can all be set via `NewBuilder()`:
 
 ```
-b := squint.NewBuilder()
-b.KeepNil = true
+b := squint.NewBuilder(
+  squint.NilValues(true),
+  squint.Log(true),
+)
 ```
 
-A bit more about `KeepNil` and `KeepEmpty`:
+They can also be set via `Build()`, and will only be in effect for that query:
 
-When a struct or map is processed, any string values that are empty (`""`) will be skipped if `KeepEmpty` is false. Any values that are `nil` will be skipped if `KeepNil` is false. This is the default behavior. Why?
+```go
+b.Build(
+  squint.LogBinds(false),
+  "update users set password =", &myPass,
+  "where id =", id,
+)
+```
+
+A bit more about `NilValues` and `EmptyValues`:
+
+When a struct or map is processed, any string values that are empty (`""`) will be skipped if `EmptyValues` is false. Any values that are `nil` will be skipped if `NilValues` is false. This is the default behavior. Why?
 
 It's common to have a `struct` type that represents a full set of possible columns to use.  It's also common that only some of those values are supplied in a given scenario. For example:
 
@@ -184,9 +199,9 @@ func updateUser(id int, updates *Updates) error {
 }
 ```
 
-What if only `updates.Department` is set? The zero value for a `string` is the empty string `("")`. If `KeepEmpty` is `true`, the user record would be updated with an empty `FirstName` and `LastName`. This is generally not what you want. If `KeepEmpty` is `false`, then only `Department` will be included in the update. This safer behavior is the default.
+What if only `updates.Department` is set? The zero value for a `string` is the empty string `("")`. If `EmptyValues` is `true`, the user record would be updated with an empty `FirstName` and `LastName`. This is generally not what you want. If `EmptyValues` is `false`, then only `Department` will be included in the update. This safer behavior is the default.
 
-Note that `KeepEmpty` only applies to `strings`. This is because the zero values of other basic types are more common as real values, zero (`0`) in particular. So you can't really tell if one of these was explicltly set or not. How to handle this?
+Note that `EmptyValues` only applies to `strings`. This is because the zero values of other basic types are more common as real values, zero (`0`) in particular. So you can't really tell if one of these was explicltly set or not. How to handle this?
 
 If you're sure the zero value is not a value you want saved, you can set `omitempty` in a particular field's `db` tag.
 
@@ -197,7 +212,7 @@ type Updates struct {
 }
 ```
 
-Otherwise, you can leverage the `KeepNil` option. It is essentially the same as `KeepEmpty`, but applies to pointers. So, you can do:
+Otherwise, you can leverage the `NilValues` option. It is essentially the same as `EmptyValues`, but applies to pointers. So, you can do:
 
 ```go
 type Updates struct {
@@ -208,7 +223,7 @@ type Updates struct {
 }
 ```
 
-Now you can tell the difference between setting `Balance` to zero or not setting it at all. With `KeepNil` set to `false`, an empty `Balance` would be skipped; otherwise it would be included as a SQL `NULL`.
+Now you can tell the difference between setting `Balance` to zero or not setting it at all. With `NilValues` set to `false`, an empty `Balance` would be skipped; otherwise it would be included as a SQL `NULL`.
 
 ## Bridge
 

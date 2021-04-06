@@ -2,6 +2,7 @@ package squint
 
 import (
 	"database/sql/driver"
+	"errors"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -45,7 +46,6 @@ func (s *DBSuite) TestBridgeDB() {
 }
 
 func (s *DBSuite) TestBridgeTx() {
-
 	s.mock.ExpectBegin()
 	tx, err := s.bDB.Beginx()
 	s.Nil(err)
@@ -56,6 +56,14 @@ func (s *DBSuite) TestBridgeTx() {
 	s.mock.ExpectCommit()
 	err = tx.Commit()
 	s.Nil(err)
+
+	s.mock.ExpectBegin().WillReturnError(errors.New("nope"))
+	tx, err = s.bDB.Begin()
+	s.NotNil(err)
+	s.Nil(tx)
+
+	s.mock.ExpectBegin()
+	s.bDB.MustBegin()
 
 	s.Nil(s.mock.ExpectationsWereMet())
 }

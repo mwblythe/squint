@@ -14,14 +14,6 @@ type Condition struct {
 	bits   []interface{}
 }
 
-// Options for the squint Builder
-type Options struct {
-	Tag       string // field tag to use
-	KeepNil   bool   // keep nil struct/map field values
-	KeepEmpty bool   // keep empty string struct/map field values
-	Log       bool   // log queries?
-}
-
 // Builder is the core of public squint interactions.
 // It's responsible for processing inputs into SQL and binds
 type Builder struct {
@@ -29,8 +21,11 @@ type Builder struct {
 }
 
 // New returns a new Builder with default options
-func NewBuilder() *Builder {
-	return &Builder{Options{Tag: "db"}}
+func NewBuilder(options ...Option) *Builder {
+	var b Builder
+	b.Option(Tag("db"))
+	b.Option(options...)
+	return &b
 }
 
 // Build accepts a list of SQL fragments and Go variables and
@@ -41,14 +36,17 @@ func NewBuilder() *Builder {
 // sql, binds := b.Build("INSERT INTO users", &User)
 //
 func (b *Builder) Build(bits ...interface{}) (string, []interface{}) {
-	q := query{opt: &b.Options}
+	q := query{opt: b.Options}
 
 	for _, bit := range bits {
 		q.Add(bit)
 	}
 
-	if b.Log {
+	if q.opt.logQuery {
 		log.Println("SQL:", q.sql.val)
+	}
+
+	if q.opt.logBinds {
 		log.Println("BINDS:", q.binds.vals)
 	}
 
@@ -85,7 +83,7 @@ func If(condition bool, bits ...interface{}) Condition {
 // If you have a situation where one might be considered empty,
 // you can use this as a pre-check to avoid generating invalid SQL
 func (b *Builder) HasValues(src interface{}) bool {
-	q := query{opt: &b.Options}
+	q := query{opt: b.Options}
 	v := reflect.ValueOf(src)
 
 	switch v.Kind() {

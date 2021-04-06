@@ -1,6 +1,9 @@
 package squint
 
 import (
+	"bytes"
+	"log"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -14,6 +17,10 @@ type SquintSuite struct {
 	suite.Suite
 	q     *Builder
 	empty binds
+}
+
+func TestSquint(t *testing.T) {
+	suite.Run(t, &SquintSuite{})
 }
 
 func (s *SquintSuite) SetupSuite() {
@@ -52,6 +59,9 @@ func (s *SquintSuite) TestPointer() {
 
 	A := [...]int{1, 10}
 	s.check("IN ( ?, ? )", binds{1, 10}, "IN", &A)
+
+	var N *int
+	s.check("a = ?", binds{nil}, "a =", N)
 }
 
 func (s *SquintSuite) TestStruct() {
@@ -147,22 +157,34 @@ func (s *SquintSuite) TestSet() {
 }
 
 func (s *SquintSuite) TestHasValues() {
-	var bar *bool
-	s.True(s.q.HasValues(H{"age": 10}))
-	s.False(s.q.HasValues(H{"name": ""}))
-	s.False(s.q.HasValues(H{"foo": nil}))
-	s.False(s.q.HasValues(H{"foo": bar}))
-	s.False(s.q.HasValues(H{}))
+	b1 := NewBuilder()
+	b2 := NewBuilder(EmptyValues(true), NilValues(true))
 
+	// test maps
+	var bar *bool
+	s.True(b1.HasValues(H{"age": 10}))
+	s.False(b1.HasValues(H{"name": ""}))
+	s.False(b1.HasValues(H{"foo": nil}))
+	s.False(b1.HasValues(H{"foo": bar}))
+	s.False(b1.HasValues(H{}))
+
+	s.True(b2.HasValues(H{"name": ""}))
+	s.True(b2.HasValues(H{"foo": nil}))
+	s.True(b2.HasValues(H{"foo": bar}))
+
+	// test structs
 	var junk struct{}
-	var trunk struct {
+	type trunk struct {
 		Name string
 	}
 
-	s.False(s.q.HasValues(junk))
-	s.False(s.q.HasValues(trunk))
-	trunk.Name = "frank"
-	s.True(s.q.HasValues(trunk))
+	s.False(b1.HasValues(junk))
+	s.False(b1.HasValues(trunk{}))
+	s.True(b1.HasValues(trunk{"Frank"}))
+	s.True(b2.HasValues(trunk{}))
+
+	// test other
+	s.True(b1.HasValues("hello"))
 }
 
 func (s *SquintSuite) TestIf() {
@@ -173,12 +195,43 @@ func (s *SquintSuite) TestIf() {
 	s.check("SELECT ?, ?", binds{10, 20}, "SELECT", s.q.If(true, 10), 20)
 }
 
+func (s *SquintSuite) TestLog() {
+	w := log.Writer()
+	defer log.SetOutput(w)
+
+	var buf bytes.Buffer
+	log.SetOutput(&buf)
+
+	// log everything
+	s.q.Build(Log(true), "select", 3)
+	s.Contains(buf.String(), "SQL:")
+	s.Contains(buf.String(), "BINDS:")
+
+	// log only query
+	buf.Reset()
+	s.q.Build(LogQuery(true), "select", 3)
+	s.Contains(buf.String(), "SQL:")
+	s.NotContains(buf.String(), "BINDS:")
+
+	// log only binds
+	buf.Reset()
+	s.q.Build(LogBinds(true), "select", 3)
+	s.NotContains(buf.String(), "SQL:")
+	s.Contains(buf.String(), "BINDS:")
+}
+
+func (s *SquintSuite) TestFuzz() {
+	var q query
+
+	// sift something other than struct or map
+	v := reflect.ValueOf("hi")
+	cols, binds := q.sift(&v)
+	s.Empty(cols)
+	s.Empty(binds)
+}
+
 func (s *SquintSuite) check(wantSQL string, wantBinds interface{}, args ...interface{}) {
 	sql, binds := s.q.Build(args...)
 	s.Equal(wantSQL, sql)
 	s.Equal(wantBinds, binds)
-}
-
-func TestSquint(t *testing.T) {
-	suite.Run(t, &SquintSuite{})
 }
