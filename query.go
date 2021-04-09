@@ -56,7 +56,7 @@ const (
 	IN
 )
 
-var insertRX = regexp.MustCompile(`(?i)\b(INSERT|REPLACE)\s+INTO\s+\S+\s*$`)
+var insertRX = regexp.MustCompile(`(?i)\b(INSERT|REPLACE)\s+(?:\w+\s+)*INTO\s+\S+\s*$`)
 var setRX = regexp.MustCompile(`(?i)\bSET\s*$`)
 var inRX = regexp.MustCompile(`(?i)\bIN\s*$`)
 

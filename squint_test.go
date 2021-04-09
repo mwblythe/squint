@@ -103,8 +103,13 @@ func (s *SquintSuite) TestArray() {
 
 func (s *SquintSuite) TestInsert() {
 	s.check(
-		"INSERT INTO junk ( id, size ) VALUES ( ?, ? )", binds{10, "large"},
-		"INSERT INTO junk", H{"id": 10, "size": "large"},
+		"INSERT IGNORE INTO junk ( id, size ) VALUES ( ?, ? )", binds{10, "large"},
+		"INSERT IGNORE INTO junk", H{"id": 10, "size": "large"},
+	)
+
+	s.check(
+		"INSERT INTO junk SET id = ?, size = ?", binds{10, "large"},
+		"INSERT INTO junk SET", H{"id": 10, "size": "large"},
 	)
 
 	s.check(
