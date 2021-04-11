@@ -88,6 +88,14 @@ newUser := User{10, "Frank"}
 // build our query
 b.Build("insert into users", newUser)
 
+// multi-row insert
+users := []User{
+  { 10, "Frank"},
+  { 20, "Hank"},
+}
+
+b.Build("insert into users", users)
+
 // also handles maps
 type Item map[string]interface{}
 b.Build("insert into users", Item{"id": 10, "name": "Frank"})
@@ -224,6 +232,8 @@ type Updates struct {
 ```
 
 Now you can tell the difference between setting `Balance` to zero or not setting it at all. With `NilValues` set to `false`, an empty `Balance` would be skipped; otherwise it would be included as a SQL `NULL`.
+
+**NOTE:** Neither `EmptyValues` or `NilValues` apply for multi-row inserts, since the columns must be consistent across rows.
 
 ## Bridge
 

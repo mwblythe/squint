@@ -66,6 +66,8 @@ type query struct {
 	opt   Options
 	sql   sqlBuf
 	binds sqlBinds
+
+	keepAll bool // internal override of "keep" options
 }
 
 // Context returns the query's current context
@@ -140,12 +142,15 @@ func (q *query) addPointer(v reflect.Value) {
 }
 
 // addSlice adds the contents of a slice to the query.
-// Normally it will be flattened an handled as inline arguments.
-// For an IN statement, it will create a series of binds within parentheses.
+// Normally it will be flattened and handled as inline arguments.
+// Special handling for IN and multi-valued INSERT.
 //
 // TODO: skip complex types? handle refs?
 func (q *query) addSlice(v reflect.Value) {
-	if q.Context() == IN {
+	context := q.Context()
+	ty := v.Type().Elem().Kind()
+
+	if context == IN {
 		q.sql.Add("(")
 		for i := 0; i < v.Len(); i++ {
 			q.sql.Add("?")
@@ -155,6 +160,24 @@ func (q *query) addSlice(v reflect.Value) {
 			q.sql.Add("NULL")
 		}
 		q.sql.Add(")")
+	} else if context == INSERT && ty == reflect.Struct {
+		// multi-row inserts MUST have the same number of binds per row
+		// so we keep all values
+		q.keepAll = true
+
+		for i := 0; i < v.Len(); i++ {
+			el := v.Index(i)
+			cols, binds := q.siftStruct(&el)
+			if i == 0 {
+				q.sql.Add("( " + strings.Join(cols, ", ") + " ) VALUES")
+			} else {
+				q.sql.Add(", ")
+			}
+			q.sql.Add("( ?" + strings.Repeat(", ?", len(cols)-1) + " )")
+			q.binds.Add(binds...)
+		}
+
+		q.keepAll = false
 	} else {
 		for i := 0; i < v.Len(); i++ {
 			q.Add(v.Index(i).Interface())
@@ -261,6 +284,10 @@ func (q *query) siftStruct(src *reflect.Value) ([]string, []interface{}) {
 // a struct or map into columns and binds. This is controlled by the
 // KeepNil and KeepEmpty options.
 func (q *query) keepValue(i interface{}, omitEmpty bool) bool {
+	if q.keepAll {
+		return true
+	}
+
 	v := reflect.ValueOf(i)
 
 	if !q.opt.keepNil {

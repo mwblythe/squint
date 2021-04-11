@@ -112,15 +112,26 @@ func (s *SquintSuite) TestInsert() {
 		"INSERT INTO junk SET", H{"id": 10, "size": "large"},
 	)
 
+	type Row struct {
+		ID     int
+		Size   string
+		Rating int `db:"omitempty"`
+	}
+
 	s.check(
 		"INSERT INTO junk ( ID, Size ) VALUES ( ?, ? )",
 		binds{5, "small"},
 		"INSERT INTO junk",
-		struct {
-			ID     int
-			Size   string
-			Rating int `db:"omitempty"`
-		}{5, "small", 0},
+		Row{5, "small", 0},
+	)
+
+	s.check(
+		"INSERT INTO junk ( ID, Size, Rating ) VALUES ( ?, ?, ? ), ( ?, ?, ? )",
+		binds{1, "small", 0, 2, "medium", 1},
+		"INSERT INTO junk", []Row{
+			{1, "small", 0},
+			{2, "medium", 1},
+		},
 	)
 }
 
