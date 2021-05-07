@@ -12,8 +12,8 @@ type Options struct {
 // Option is a functional option
 type Option func(*Options)
 
-// Option applies the given options
-func (o *Options) Option(options ...Option) {
+// SetOption applies the given options
+func (o *Options) SetOption(options ...Option) {
 	for _, opt := range options {
 		opt(o)
 	}

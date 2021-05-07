@@ -95,7 +95,7 @@ func (q *query) Add(bit interface{}) {
 			}
 		}
 	case Option:
-		q.opt.Option(b)
+		q.opt.SetOption(b)
 	default:
 		v := reflect.ValueOf(bit)
 

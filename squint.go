@@ -23,8 +23,8 @@ type Builder struct {
 // NewBuilder returns a new Builder with the supplied options
 func NewBuilder(options ...Option) *Builder {
 	var b Builder
-	b.Option(Tag("db"))
-	b.Option(options...)
+	b.SetOption(Tag("db"))
+	b.SetOption(options...)
 	return &b
 }
 
