@@ -266,14 +266,26 @@ func (q *query) siftStruct(src *reflect.Value) ([]string, []interface{}) {
 	binds := make([]interface{}, 0, src.NumField())
 
 	for i := 0; i < src.NumField(); i++ {
-		name, omitEmpty := q.mapField(src.Type().Field(i))
-		if name == "" {
-			continue
-		}
+		field := src.Type().Field(i)
+		fieldVal := src.Field(i)
 
-		if v := src.Field(i).Interface(); q.keepValue(v, omitEmpty) {
-			cols = append(cols, name)
-			binds = append(binds, v)
+		if fieldVal.Kind() == reflect.Struct {
+			if !(field.PkgPath == "" || field.Anonymous) {
+				continue
+			}
+
+			c, b := q.siftStruct(&fieldVal)
+			cols = append(cols, c...)
+			binds = append(binds, b...)
+		} else {
+			name, omitEmpty := q.mapField(field)
+			if name == "" {
+				continue
+			}
+			if v := fieldVal.Interface(); q.keepValue(v, omitEmpty) {
+				cols = append(cols, name)
+				binds = append(binds, v)
+			}
 		}
 	}
 

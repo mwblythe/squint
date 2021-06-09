@@ -77,6 +77,20 @@ func (s *SquintSuite) TestStruct() {
 			Status []int
 		}{10, "Frank", true, 1000.00, []int{2, 4}},
 	)
+
+	type person struct {
+		First string
+		Last  string
+	}
+	s.check(
+		"WHERE ID = ? AND First = ? AND Last = ?",
+		binds{10, "Frank", "Gallagher"},
+		"WHERE",
+		struct {
+			ID int
+			person
+		}{10, person{"Frank", "Gallagher"}},
+	)
 }
 
 func (s *SquintSuite) TestMap() {
