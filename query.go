@@ -270,7 +270,7 @@ func (q *query) siftStruct(src *reflect.Value) ([]string, []interface{}) {
 		fieldVal := src.Field(i)
 
 		if fieldVal.Kind() == reflect.Struct {
-			if !(field.PkgPath == "" || field.Anonymous) {
+			if !field.Anonymous {
 				continue
 			}
 
