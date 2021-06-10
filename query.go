@@ -269,11 +269,7 @@ func (q *query) siftStruct(src *reflect.Value) ([]string, []interface{}) {
 		field := src.Type().Field(i)
 		fieldVal := src.Field(i)
 
-		if fieldVal.Kind() == reflect.Struct {
-			if !field.Anonymous {
-				continue
-			}
-
+		if fieldVal.Kind() == reflect.Struct && field.Anonymous {
 			c, b := q.siftStruct(&fieldVal)
 			cols = append(cols, c...)
 			binds = append(binds, b...)
