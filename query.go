@@ -67,7 +67,7 @@ type query struct {
 	sql   sqlBuf
 	binds sqlBinds
 
-	keepAll bool // internal override of "keep" options
+	keepAll bool // internal override of empty mode
 }
 
 // Context returns the query's current context
@@ -242,7 +242,7 @@ func (q *query) siftMap(src *reflect.Value) ([]string, []interface{}) {
 
 	// build list of cols and value map
 	for iter.Next() {
-		if v := iter.Value().Interface(); q.keepValue(v, false) {
+		if v, ok := q.checkValue(iter.Value().Interface(), eDefault); ok {
 			k := iter.Key().String()
 			cols = append(cols, k)
 			valmap[k] = v
@@ -274,11 +274,11 @@ func (q *query) siftStruct(src *reflect.Value) ([]string, []interface{}) {
 			cols = append(cols, c...)
 			binds = append(binds, b...)
 		} else {
-			name, omitEmpty := q.mapField(field)
+			name, mode := q.mapField(field)
 			if name == "" {
 				continue
 			}
-			if v := fieldVal.Interface(); q.keepValue(v, omitEmpty) {
+			if v, ok := q.checkValue(fieldVal.Interface(), mode); ok {
 				cols = append(cols, name)
 				binds = append(binds, v)
 			}
@@ -291,35 +291,30 @@ func (q *query) siftStruct(src *reflect.Value) ([]string, []interface{}) {
 // keepValue determines whether a given value should be kept when sifting
 // a struct or map into columns and binds. This is controlled by the
 // KeepNil and KeepEmpty options.
-func (q *query) keepValue(i interface{}, omitEmpty bool) bool {
-	if q.keepAll {
-		return true
+func (q *query) checkValue(in interface{}, mode emptyMode) (interface{}, bool) {
+	v := reflect.ValueOf(in)
+	if v.IsValid() && !v.IsZero() {
+		return in, true
 	}
 
-	v := reflect.ValueOf(i)
+	if mode == eDefault {
+		mode = q.opt.empty
+	}
 
-	if !q.opt.keepNil {
-		switch v.Kind() {
-		case reflect.Ptr, reflect.Map, reflect.Slice:
-			return !v.IsNil()
-		case reflect.Invalid:
-			return false
+	switch mode {
+	case eOmit:
+		if !q.keepAll {
+			return nil, false
 		}
+	case eNull:
+		return nil, true
 	}
 
-	if !q.opt.keepEmpty && v.Kind() == reflect.String {
-		omitEmpty = true
-	}
-
-	if omitEmpty {
-		return !v.IsZero()
-	}
-
-	return true
+	return in, true // eKeep
 }
 
 // mapField maps a struct field to a db column name
-func (q *query) mapField(field reflect.StructField) (name string, omitEmpty bool) {
+func (q *query) mapField(field reflect.StructField) (name string, mode emptyMode) {
 	// check for unexported fields
 	if field.PkgPath != "" {
 		return
@@ -333,9 +328,14 @@ func (q *query) mapField(field reflect.StructField) (name string, omitEmpty bool
 		}
 
 		for _, t := range strings.Split(tag, ",") {
-			if t == "omitempty" {
-				omitEmpty = true
-			} else {
+			switch t {
+			case "keepempty":
+				mode = eKeep
+			case "omitempty":
+				mode = eOmit
+			case "nullempty":
+				mode = eNull
+			default:
 				name = t
 			}
 		}
