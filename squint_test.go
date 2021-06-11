@@ -167,54 +167,52 @@ func (s *SquintSuite) TestSet() {
 		}{false, "retired"},
 		"WHERE id =", 10,
 	)
-
-	// EmptyUpdate
-	s.check(
-		"UPDATE table SET status = ?",
-		binds{"retired"},
-		"UPDATE table SET",
-		H{"status": "retired", "name": ""},
-	)
-
-	// NilUpdate
-	var ptr *bool
-	s.check(
-		"UPDATE table SET status = ?",
-		binds{"retired"},
-		"UPDATE table SET",
-		H{"status": "retired", "name": ptr},
-	)
 }
 
 func (s *SquintSuite) TestHasValues() {
-	b1 := NewBuilder()
-	b2 := NewBuilder(EmptyValues(true), NilValues(true))
-
-	// test maps
 	var bar *bool
-	s.True(b1.HasValues(H{"age": 10}))
-	s.False(b1.HasValues(H{"name": ""}))
-	s.False(b1.HasValues(H{"foo": nil}))
-	s.False(b1.HasValues(H{"foo": bar}))
-	s.False(b1.HasValues(H{}))
-
-	s.True(b2.HasValues(H{"name": ""}))
-	s.True(b2.HasValues(H{"foo": nil}))
-	s.True(b2.HasValues(H{"foo": bar}))
-
-	// test structs
-	var junk struct{}
-	type trunk struct {
+	type person struct {
 		Name string
+		Age  int
 	}
 
-	s.False(b1.HasValues(junk))
-	s.False(b1.HasValues(trunk{}))
-	s.True(b1.HasValues(trunk{"Frank"}))
-	s.True(b2.HasValues(trunk{}))
+	empty := []interface{}{
+		H{"name": ""},
+		H{"foo": nil},
+		H{"foo": bar},
+		person{},
+	}
 
-	// test other
-	s.True(b1.HasValues("hello"))
+	s.Run("KeepEmpty", func() {
+		b := NewBuilder(KeepEmpty())
+		for _, v := range empty {
+			s.True(b.HasValues(v))
+		}
+		s.False(b.HasValues(H{}))
+	})
+
+	s.Run("OmitEmpty", func() {
+		b := NewBuilder(OmitEmpty())
+		for _, v := range empty {
+			s.False(b.HasValues(v))
+		}
+		s.False(b.HasValues(H{}))
+	})
+
+	s.Run("NullEmpty", func() {
+		b := NewBuilder(NullEmpty())
+		for _, v := range empty {
+			s.True(b.HasValues(v))
+		}
+		s.False(b.HasValues(H{}))
+	})
+
+	s.Run("NotEmpty", func() {
+		b := NewBuilder(OmitEmpty())
+		s.True(b.HasValues("hello"))
+		s.True(b.HasValues(H{"age": 10}))
+		s.True(b.HasValues(person{"Frank", 0}))
+	})
 }
 
 func (s *SquintSuite) TestIf() {
@@ -258,6 +256,62 @@ func (s *SquintSuite) TestFuzz() {
 	cols, binds := q.sift(&v)
 	s.Empty(cols)
 	s.Empty(binds)
+}
+
+func (s *SquintSuite) TestEmpty() {
+	orig := s.q
+	defer func() { s.q = orig }()
+
+	var rec struct {
+		Name string
+		Num  int
+		Flag bool
+	}
+
+	s.Run("KeepEmpty", func() {
+		s.q = NewBuilder(KeepEmpty())
+		s.check(
+			"SET Name = ?, Num = ?, Flag = ?",
+			binds{"", 0, false},
+			"SET", rec,
+		)
+	})
+
+	s.Run("OmitEmpty", func() {
+		s.q = NewBuilder(OmitEmpty())
+		s.check(
+			"SET", s.empty,
+			"SET", rec,
+		)
+	})
+
+	s.Run("NullEmpty", func() {
+		s.q = NewBuilder(NullEmpty())
+		s.check(
+			"SET Name = ?, Num = ?, Flag = ?",
+			binds{nil, nil, nil},
+			"SET", rec,
+		)
+	})
+
+	var rec2 struct {
+		Name string `db:"omitempty"`
+		Num  int    `db:"nullempty"`
+		Flag bool   `db:"keepempty"`
+	}
+
+	// all fields have empty mode overrides, so results should be
+	// the same regardless of builder's empty mode
+	s.Run("EmptyTags", func() {
+		for _, o := range []Option{KeepEmpty(), OmitEmpty(), NullEmpty()} {
+			s.q.SetOption(o)
+			s.check(
+				"SET Num = ?, Flag = ?",
+				binds{nil, false},
+				"SET", rec2,
+			)
+		}
+	})
 }
 
 func (s *SquintSuite) check(wantSQL string, wantBinds interface{}, args ...interface{}) {
