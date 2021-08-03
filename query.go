@@ -289,8 +289,7 @@ func (q *query) siftStruct(src *reflect.Value) ([]string, []interface{}) {
 }
 
 // keepValue determines whether a given value should be kept when sifting
-// a struct or map into columns and binds. This is controlled by the
-// KeepNil and KeepEmpty options.
+// a struct or map into columns and binds. This is controlled by the empty mode.
 func (q *query) checkValue(in interface{}, mode emptyMode) (interface{}, bool) {
 	v := reflect.ValueOf(in)
 	if v.IsValid() && !v.IsZero() {
