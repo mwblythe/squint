@@ -1,6 +1,7 @@
 package squint
 
 import (
+	"context"
 	"database/sql/driver"
 	"errors"
 	"testing"
@@ -91,9 +92,18 @@ func (s *DBSuite) testExec(b *Bridge) {
 	_, err = b.Exec(info.inBits...)
 	s.Nil(err)
 
+	// bridged Exec with context
+	s.expectExec(info)
+	_, err = b.ExecContext(context.TODO(), info.inBits...)
+	s.Nil(err)
+
 	// bridged MustExec
 	s.expectExec(info)
 	s.NotPanics(func() { b.MustExec(info.inBits...) })
+
+	// bridged MustExec with context
+	s.expectExec(info)
+	s.NotPanics(func() { b.MustExecContext(context.TODO(), info.inBits...) })
 
 	s.Nil(s.mock.ExpectationsWereMet())
 }
@@ -119,14 +129,29 @@ func (s *DBSuite) testQueryRow(b *Bridge) {
 	err = b.QueryRow(info.inBits...).Scan(&id)
 	s.Nil(err)
 
+	// bridged QueryRow with context
+	s.expectQueryRow(info)
+	err = b.QueryRowContext(context.TODO(), info.inBits...).Scan(&id)
+	s.Nil(err)
+
 	// bridged QueryRowx
 	s.expectQueryRow(info)
 	err = b.QueryRowx(info.inBits...).Scan(&id)
 	s.Nil(err)
 
+	// bridged QueryRowx with context
+	s.expectQueryRow(info)
+	err = b.QueryRowxContext(context.TODO(), info.inBits...).Scan(&id)
+	s.Nil(err)
+
 	// bridged Get
 	s.expectQueryRow(info)
 	err = b.Get(&id, info.inBits...)
+	s.Nil(err)
+
+	// bridged Get with context
+	s.expectQueryRow(info)
+	err = b.GetContext(context.TODO(), &id, info.inBits...)
 	s.Nil(err)
 
 	s.Nil(s.mock.ExpectationsWereMet())
@@ -157,9 +182,23 @@ func (s *DBSuite) testQuery(b *Bridge) {
 	s.NotNil(rows)
 	s.Nil(rows.Close())
 
+	// bridged Query with context
+	s.expectQuery(info)
+	rows, err = b.QueryContext(context.TODO(), info.inBits)
+	s.Nil(err)
+	s.NotNil(rows)
+	s.Nil(rows.Close())
+
 	// bridged Queryx
 	s.expectQuery(info)
 	xrows, err := b.Queryx(info.inBits)
+	s.Nil(err)
+	s.NotNil(xrows)
+	s.Nil(xrows.Close())
+
+	// bridged Queryx with context
+	s.expectQuery(info)
+	xrows, err = b.QueryxContext(context.TODO(), info.inBits)
 	s.Nil(err)
 	s.NotNil(xrows)
 	s.Nil(xrows.Close())
@@ -172,6 +211,12 @@ func (s *DBSuite) testQuery(b *Bridge) {
 
 	s.expectQuery(info)
 	err = b.Select(&result, info.inBits)
+	s.Nil(err)
+	s.Equal(2, len(result))
+
+	result = result[0:0]
+	s.expectQuery(info)
+	err = b.SelectContext(context.TODO(), &result, info.inBits)
 	s.Nil(err)
 	s.Equal(2, len(result))
 

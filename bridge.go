@@ -4,6 +4,7 @@ package squint
 // squint doesn't have a dependency on sqlx?
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/jmoiron/sqlx"
@@ -21,6 +22,16 @@ type Target interface {
 	QueryRowx(query string, args ...interface{}) *sqlx.Row
 	Get(dest interface{}, query string, args ...interface{}) error
 	Select(dest interface{}, query string, args ...interface{}) error
+
+	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
+	QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
+	QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row
+
+	MustExecContext(ctx context.Context, query string, args ...interface{}) sql.Result
+	QueryxContext(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error)
+	QueryRowxContext(ctx context.Context, query string, args ...interface{}) *sqlx.Row
+	GetContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error
+	SelectContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error
 }
 
 // Bridge provides a connection between a Builder and a Target.
@@ -46,10 +57,22 @@ func (b *Bridge) Exec(bits ...interface{}) (sql.Result, error) {
 	return b.target.Exec(sql, binds...)
 }
 
+// ExecContext executes a query that doesn't return rows
+func (b *Bridge) ExecContext(ctx context.Context, bits ...interface{}) (sql.Result, error) {
+	sql, binds := b.Build(bits...)
+	return b.target.ExecContext(ctx, sql, binds...)
+}
+
 // Query executes a query that returns rows, typically a SELECT
 func (b *Bridge) Query(bits ...interface{}) (*sql.Rows, error) {
 	sql, binds := b.Build(bits...)
 	return b.target.Query(sql, binds...)
+}
+
+// QueryContext executes a query that returns rows, typically a SELECT
+func (b *Bridge) QueryContext(ctx context.Context, bits ...interface{}) (*sql.Rows, error) {
+	sql, binds := b.Build(bits...)
+	return b.target.QueryContext(ctx, sql, binds...)
 }
 
 // QueryRow executes a query that is expected to return at most one row
@@ -58,10 +81,22 @@ func (b *Bridge) QueryRow(bits ...interface{}) *sql.Row {
 	return b.target.QueryRow(sql, binds...)
 }
 
+// QueryRowContext executes a query that is expected to return at most one row
+func (b *Bridge) QueryRowContext(ctx context.Context, bits ...interface{}) *sql.Row {
+	sql, binds := b.Build(bits...)
+	return b.target.QueryRowContext(ctx, sql, binds...)
+}
+
 // MustExec executes a query and panics on error
 func (b *Bridge) MustExec(bits ...interface{}) sql.Result {
 	sql, binds := b.Build(bits...)
 	return b.target.MustExec(sql, binds...)
+}
+
+// MustExecContext executes a query and panics on error
+func (b *Bridge) MustExecContext(ctx context.Context, bits ...interface{}) sql.Result {
+	sql, binds := b.Build(bits...)
+	return b.target.MustExecContext(ctx, sql, binds...)
 }
 
 // Queryx is the same as Query but returns a *sqlx.Rows
@@ -70,10 +105,22 @@ func (b *Bridge) Queryx(bits ...interface{}) (*sqlx.Rows, error) {
 	return b.target.Queryx(sql, binds...)
 }
 
+// QueryxContext is the same as QueryContext but returns a *sqlx.Rows
+func (b *Bridge) QueryxContext(ctx context.Context, bits ...interface{}) (*sqlx.Rows, error) {
+	sql, binds := b.Build(bits...)
+	return b.target.QueryxContext(ctx, sql, binds...)
+}
+
 // QueryRowx is the same as QueryRow but returns a *sqlx.Row
 func (b *Bridge) QueryRowx(bits ...interface{}) *sqlx.Row {
 	sql, binds := b.Build(bits...)
 	return b.target.QueryRowx(sql, binds...)
+}
+
+// QueryRowxContext is the same as QueryRowContext but returns a *sqlx.Row
+func (b *Bridge) QueryRowxContext(ctx context.Context, bits ...interface{}) *sqlx.Row {
+	sql, binds := b.Build(bits...)
+	return b.target.QueryRowxContext(ctx, sql, binds...)
 }
 
 // Get retrieves a single row and scans into dest
@@ -82,10 +129,22 @@ func (b *Bridge) Get(dest interface{}, bits ...interface{}) error {
 	return b.target.Get(dest, sql, binds...)
 }
 
+// GetContext retrieves a single row and scans into dest
+func (b *Bridge) GetContext(ctx context.Context, dest interface{}, bits ...interface{}) error {
+	sql, binds := b.Build(bits...)
+	return b.target.GetContext(ctx, dest, sql, binds...)
+}
+
 // Select executes a query and scans the into dest (a slice)
 func (b *Bridge) Select(dest interface{}, bits ...interface{}) error {
 	sql, binds := b.Build(bits...)
 	return b.target.Select(dest, sql, binds...)
+}
+
+// SelectContext executes a query and scans the into dest (a slice)
+func (b *Bridge) SelectContext(ctx context.Context, dest interface{}, bits ...interface{}) error {
+	sql, binds := b.Build(bits...)
+	return b.target.SelectContext(ctx, dest, sql, binds...)
 }
 
 // DB is a bridged db connection; Create one with squint.BridgeDB
