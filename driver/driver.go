@@ -20,7 +20,7 @@ func (d driverWrapper) Open(name string) (driver.Conn, error) {
 		return nil, err
 	}
 
-	return connWrapper{orig.(conn)}, nil
+	return &connWrapper{orig.(conn)}, nil
 }
 
 // wrapped driver implementing DriverContext
@@ -35,7 +35,7 @@ type driverContextWrapper struct { // nolint
 }
 
 // Open a connection
-func (d *driverContextWrapper) Open(name string) (driver.Conn, error) {
+func (d driverContextWrapper) Open(name string) (driver.Conn, error) {
 	log.Println("Open")
 
 	orig, err := d.driverContext.Open(name)

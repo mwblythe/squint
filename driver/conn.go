@@ -39,7 +39,7 @@ func (c *connWrapper) Query(query string, args []driver.Value) (driver.Rows, err
 }
 
 func (c *connWrapper) build(query string, inVals []driver.Value) (string, []driver.Value) {
-	bits := make([]interface{}, 1, len(inVals)+1)
+	bits := make([]interface{}, len(inVals)+1)
 	bits[0] = query
 	for n := range inVals {
 		bits[n+1] = inVals[n]
@@ -85,7 +85,7 @@ func (c *connContextWrapper) QueryContext(ctx context.Context, query string, arg
 }
 
 func (c *connContextWrapper) build(ctx context.Context, query string, inVals []driver.NamedValue) (context.Context, string, []driver.NamedValue) {
-	bits := make([]interface{}, 1, len(inVals)+1)
+	bits := make([]interface{}, len(inVals)+1)
 	bits[0] = query
 	for n := range inVals {
 		bits[n+1] = inVals[n].Value
