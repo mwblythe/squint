@@ -11,8 +11,6 @@ import (
 type connCore interface {
 	driver.Conn
 	driver.Pinger
-	// driver.SessionResetter
-	//	driver.Validator
 }
 
 type conn interface {
@@ -63,6 +61,8 @@ type connContext interface {
 	driver.QueryerContext
 	driver.ConnPrepareContext
 	driver.ConnBeginTx
+	driver.SessionResetter // XXX
+	driver.Validator       // XXX
 }
 
 type connContextWrapper struct {
