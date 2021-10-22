@@ -14,7 +14,11 @@ func (c *connectorWrapper) Driver() driver.Driver {
 	return c.driver
 }
 
-// TODO
-func (c *connectorWrapper) Connect(context.Context) (driver.Conn, error) {
-	return nil, nil
+func (c *connectorWrapper) Connect(ctx context.Context) (driver.Conn, error) {
+	orig, err := c.Connector.Connect(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return connContextWrapper{orig.(connContext)}, nil
 }
