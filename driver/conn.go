@@ -45,7 +45,7 @@ func (c *connWrapper) build(query string, inVals []driver.Value) (string, []driv
 		bits[n+1] = inVals[n]
 	}
 
-	query, binds := squint.NewBuilder().Build(bits...)
+	query, binds := squint.NewBuilder(squint.Log(true)).Build(bits...)
 
 	outVals := make([]driver.Value, len(binds))
 	for n := range binds {
@@ -61,8 +61,8 @@ type connContext interface {
 	driver.QueryerContext
 	driver.ConnPrepareContext
 	driver.ConnBeginTx
-	driver.SessionResetter // XXX
-	driver.Validator       // XXX
+	//	driver.SessionResetter // XXX
+	//	driver.Validator       // XXX
 }
 
 type connContextWrapper struct {
