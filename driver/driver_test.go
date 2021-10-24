@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/mwblythe/squint/driver"
 	"github.com/stretchr/testify/suite"
@@ -14,26 +13,19 @@ import (
 type H map[string]interface{}
 type Bits []interface{}
 
+var ctx = context.TODO()
+
 func (b Bits) Split() (string, Bits) {
 	return b[0].(string), b[1:]
 }
 
 type DriverSuite struct {
 	suite.Suite
-	driver string
-	dsn    string
-	db     *sql.DB
-	count  int64
+	driver string  // driver name to wrap
+	dsn    string  // dsn to open
+	db     *sql.DB // wrapped db handle
+	count  int64   // insert count
 }
-
-/*
-func DriverTest(t *testing.T, driver string, dsn string) {
-	suite.Run(t, &DriverSuite{
-		driver: driver,
-		dsn:    dsn,
-	})
-}
-*/
 
 func (s *DriverSuite) SetupSuite() {
 	driver, err := driver.WrapByName(s.driver)
@@ -54,51 +46,99 @@ func (s *DriverSuite) TearDownSuite() {
 	s.db.Close()
 }
 
-func (s *DriverSuite) Test1Ping() {
-	s.Nil(s.db.Ping())
-	s.Nil(s.db.PingContext(context.TODO()))
+func (s *DriverSuite) TestDriver() {
+	s.Run("Ping", func() {
+		s.Nil(s.db.PingContext(ctx))
+	})
+
+	s.Run("Exec", func() {
+		for n := 0; n < 5; n++ {
+			s.InsertPerson()
+		}
+	})
+
+	s.Run("QueryRow", func() {
+		s.GetPerson()
+	})
+
+	s.Run("Query", func() {
+		s.GetPeople()
+	})
+
+	s.Run("Transaction", func() {
+		s.Transaction()
+	})
 }
 
-func (s *DriverSuite) Test2Exec() {
-	query, args := s.Insert().Split()
-	_, err := s.db.Exec(query, args...)
-	s.Nil(err)
-}
-
-func (s *DriverSuite) Test2ExecContext() {
-	query, args := s.Insert().Split()
-	_, err := s.db.ExecContext(context.TODO(), query, args...)
-	s.Nil(err)
-}
-
-func (s *DriverSuite) Test3QueryRow() {
-	var name string
-	query, args := s.Get().Split()
-	row := s.db.QueryRow(query, args...)
-	s.Nil(row.Scan(&name))
-	s.True(strings.HasPrefix(name, "user-"))
-}
-
-func (s *DriverSuite) Test3QueryRowContext() {
-	var name string
-	query, args := s.Get().Split()
-	row := s.db.QueryRowContext(context.TODO(), query, args...)
-	s.Nil(row.Scan(&name))
-	s.True(strings.HasPrefix(name, "user-"))
-}
-
-func (s *DriverSuite) Insert() Bits {
+func (s *DriverSuite) InsertPerson() {
 	s.count++
 
-	return Bits{
+	query, args := Bits{
 		"insert into people",
 		H{
 			"id":   s.count,
-			"name": fmt.Sprintf("user-%d", time.Now().Unix()),
+			"name": fmt.Sprintf("user-%d", s.count),
 		},
-	}
+	}.Split()
+
+	_, err := s.db.ExecContext(ctx, query, args...)
+	s.Nil(err)
 }
 
-func (s *DriverSuite) Get() Bits {
-	return Bits{"select name from people where id =", s.count}
+func (s *DriverSuite) GetPerson() {
+	var name string
+	query, args := Bits{"select name from people where id =", s.count}.Split()
+	row := s.db.QueryRowContext(ctx, query, args...)
+
+	s.Nil(row.Scan(&name))
+	s.True(strings.HasPrefix(name, "user-"))
+}
+
+func (s *DriverSuite) GetPeople() {
+	query, args := Bits{"select id, name from people", "order by id desc"}.Split()
+	res, err := s.db.QueryContext(ctx, query, args...)
+	if !s.Nil(err) {
+		return
+	}
+	defer res.Close()
+
+	count := s.count
+
+	for res.Next() {
+		var id int64
+		var name string
+		s.Nil(res.Scan(&id, &name))
+		s.Equal(count, id)
+		s.NotEmpty(name)
+
+		count--
+	}
+
+	s.Empty(count)
+}
+
+func (s *DriverSuite) Transaction() {
+	// start a transaction
+	tx, err := s.db.Begin()
+	if !s.Nil(err) {
+		return
+	}
+
+	// delete a row, check that it worked
+	res, err := tx.ExecContext(ctx, "delete from people where id =", s.count)
+	s.Nil(err)
+	affected, err := res.RowsAffected()
+	s.Nil(err)
+	s.NotEmpty(affected)
+
+	// rollback so it never happened
+	s.Nil(tx.Rollback())
+
+	// confirm count is unchanged
+	var count int64
+	row := s.db.QueryRowContext(ctx, "select count(*) from people")
+	s.Nil(row.Scan(&count))
+	s.Equal(s.count, count)
+
+	return
 }
