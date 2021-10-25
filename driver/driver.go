@@ -1,9 +1,13 @@
 package driver
 
 import (
+	"context"
 	"database/sql"
 	"database/sql/driver"
 	"log"
+	"strings"
+
+	"github.com/mwblythe/squint"
 )
 
 // driverWrapper is a wrapper for basic drivers
@@ -12,7 +16,7 @@ type driverWrapper struct {
 }
 
 // Open a connection
-func (d driverWrapper) Open(name string) (driver.Conn, error) {
+func (d *driverWrapper) Open(name string) (driver.Conn, error) {
 	log.Println("OPEN")
 
 	orig, err := d.Driver.Open(name)
@@ -35,7 +39,7 @@ type driverContextWrapper struct { // nolint
 }
 
 // Open a connection
-func (d driverContextWrapper) Open(name string) (driver.Conn, error) {
+func (d *driverContextWrapper) Open(name string) (driver.Conn, error) {
 	log.Println("Open")
 
 	orig, err := d.driverContext.Open(name)
@@ -78,4 +82,47 @@ func Wrap(orig driver.Driver) driver.Driver {
 	}
 
 	return &driverWrapper{orig}
+}
+
+// does the query have bind placeholders?
+// TODO: detect more than mysql
+func hasPlaceholders(query string) bool {
+	return strings.Contains(query, "?")
+}
+
+func build(query string, inVals []driver.Value) (string, []driver.Value) {
+	bits := make([]interface{}, len(inVals)+1)
+	bits[0] = query
+	for n := range inVals {
+		bits[n+1] = inVals[n]
+	}
+
+	query, binds := squint.NewBuilder().Build(bits...)
+
+	outVals := make([]driver.Value, len(binds))
+	for n := range binds {
+		outVals[n] = driver.Value(binds[n])
+	}
+
+	return query, outVals
+}
+
+func buildNamed(ctx context.Context, query string, inVals []driver.NamedValue) (context.Context, string, []driver.NamedValue) {
+	bits := make([]interface{}, len(inVals)+1)
+	bits[0] = query
+	for n := range inVals {
+		bits[n+1] = inVals[n].Value
+	}
+
+	query, binds := squint.NewBuilder().Build(bits...)
+
+	outVals := make([]driver.NamedValue, len(binds))
+	for n := range binds {
+		outVals[n] = driver.NamedValue{
+			Ordinal: n + 1,
+			Value:   driver.Value(binds[n]),
+		}
+	}
+
+	return ctx, query, outVals
 }

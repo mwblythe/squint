@@ -19,8 +19,8 @@ func (s *SQLiteSuite) SetupSuite() {
 
 	_, err := s.db.Exec(`
 		CREATE TABLE people (
-			id integer primary key,
-			name string not null
+			id   integer primary key,
+			name string  not null
 		)
 	`)
 	if err != nil {

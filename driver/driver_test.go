@@ -65,6 +65,10 @@ func (s *DriverSuite) TestDriver() {
 		s.GetPeople()
 	})
 
+	s.Run("Prepared", func() {
+		s.Prepared()
+	})
+
 	s.Run("Transaction", func() {
 		s.Transaction()
 	})
@@ -141,4 +145,26 @@ func (s *DriverSuite) Transaction() {
 	s.Equal(s.count, count)
 
 	return
+}
+
+func (s *DriverSuite) Prepared() {
+	queryRow := func(query string) {
+		stmt, err := s.db.PrepareContext(ctx, query)
+		if !s.Nil(err) {
+			return
+		}
+
+		var name string
+		row := stmt.QueryRowContext(ctx, s.count)
+		s.Nil(row.Scan(&name))
+		s.NotEmpty(name)
+	}
+
+	s.Run("WithPlaceholders", func() {
+		queryRow("select name from people where id = ?")
+	})
+
+	s.Run("WithoutPlaceholders", func() {
+		queryRow("select name from people where id =")
+	})
 }
