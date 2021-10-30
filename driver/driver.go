@@ -1,7 +1,6 @@
 package driver
 
 import (
-	"context"
 	"database/sql"
 	"database/sql/driver"
 	"log"
@@ -10,9 +9,26 @@ import (
 	"github.com/mwblythe/squint"
 )
 
+// Register a squint wrapped sql driver
+func Register(name string, o ...Option) {
+	var opt Options
+	opt.set(o...)
+
+	if opt.driver == nil {
+		panic("squint/driver: must specify To or ToDriver")
+	}
+
+	if opt.builder == nil {
+		opt.builder = squint.NewBuilder()
+	}
+
+	sql.Register(name, wrap(opt.driver, opt.builder))
+}
+
 // driverWrapper is a wrapper for basic drivers
 type driverWrapper struct {
 	driver.Driver // the driver being wrapped
+	builder       *builder
 }
 
 // Open a connection
@@ -24,7 +40,10 @@ func (d *driverWrapper) Open(name string) (driver.Conn, error) {
 		return nil, err
 	}
 
-	return &connWrapper{orig.(conn)}, nil
+	return &connWrapper{
+		conn:    orig.(conn),
+		builder: d.builder,
+	}, nil
 }
 
 // wrapped driver implementing DriverContext
@@ -36,6 +55,7 @@ type driverContext interface {
 // driverContextWrapper is a wrapper for driverContextWrapper drivers
 type driverContextWrapper struct { // nolint
 	driverContext
+	builder *builder
 }
 
 // Open a connection
@@ -47,7 +67,10 @@ func (d *driverContextWrapper) Open(name string) (driver.Conn, error) {
 		return nil, err
 	}
 
-	return &connContextWrapper{orig.(connContext)}, nil
+	return &connContextWrapper{
+		connContext: orig.(connContext),
+		builder:     d.builder,
+	}, nil
 }
 
 // OpenConnector opens a connector
@@ -65,64 +88,23 @@ func (d *driverContextWrapper) OpenConnector(name string) (driver.Connector, err
 	}, nil
 }
 
-// WrapByName wraps the named sql driver
-func WrapByName(name string) (driver.Driver, error) {
-	db, err := sql.Open(name, "")
-	if err != nil {
-		return nil, err
-	}
-	defer db.Close()
-	return Wrap(db.Driver()), nil
-}
-
-// Wrap the provided Driver
-func Wrap(orig driver.Driver) driver.Driver {
+// wrap the provided Driver
+func wrap(orig driver.Driver, build *squint.Builder) driver.Driver {
 	if _, ok := orig.(driver.DriverContext); ok {
-		return &driverContextWrapper{orig.(driverContext)}
+		return &driverContextWrapper{
+			driverContext: orig.(driverContext),
+			builder:       newBuilder(build),
+		}
 	}
 
-	return &driverWrapper{orig}
+	return &driverWrapper{
+		Driver:  orig,
+		builder: newBuilder(build),
+	}
 }
 
 // does the query have bind placeholders?
 // TODO: detect more than mysql
 func hasPlaceholders(query string) bool {
 	return strings.Contains(query, "?")
-}
-
-func build(query string, inVals []driver.Value) (string, []driver.Value) {
-	bits := make([]interface{}, len(inVals)+1)
-	bits[0] = query
-	for n := range inVals {
-		bits[n+1] = inVals[n]
-	}
-
-	query, binds := squint.NewBuilder().Build(bits...)
-
-	outVals := make([]driver.Value, len(binds))
-	for n := range binds {
-		outVals[n] = driver.Value(binds[n])
-	}
-
-	return query, outVals
-}
-
-func buildNamed(ctx context.Context, query string, inVals []driver.NamedValue) (context.Context, string, []driver.NamedValue) {
-	bits := make([]interface{}, len(inVals)+1)
-	bits[0] = query
-	for n := range inVals {
-		bits[n+1] = inVals[n].Value
-	}
-
-	query, binds := squint.NewBuilder().Build(bits...)
-
-	outVals := make([]driver.NamedValue, len(binds))
-	for n := range binds {
-		outVals[n] = driver.NamedValue{
-			Ordinal: n + 1,
-			Value:   driver.Value(binds[n]),
-		}
-	}
-
-	return ctx, query, outVals
 }

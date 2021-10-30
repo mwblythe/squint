@@ -23,5 +23,16 @@ func (c *connectorWrapper) Connect(ctx context.Context) (driver.Conn, error) {
 		return nil, err
 	}
 
-	return &connContextWrapper{orig.(connContext)}, nil
+	return &connContextWrapper{
+		connContext: orig.(connContext),
+		builder:     c.builder(),
+	}, nil
+}
+
+func (c *connectorWrapper) builder() *builder {
+	if cb, ok := c.driver.(*driverContextWrapper); ok {
+		return cb.builder
+	}
+
+	panic("no builder in connector")
 }

@@ -11,8 +11,9 @@ import (
 // only used for prepared queries without placeholders.
 // usually because a driver returned ErrSkip elsewhere
 type stmt struct {
-	conn  driver.Conn
-	query string
+	conn    driver.Conn
+	query   string
+	builder *builder
 }
 
 func (s *stmt) NumInput() int {
@@ -27,7 +28,7 @@ func (s *stmt) Exec(args []driver.Value) (driver.Result, error) {
 	}
 
 	// build new query + args
-	s.query, args = build(s.query, args)
+	s.query, args = s.builder.BuildValues(s.query, args)
 
 	// prepare new statement
 	stmt, err := s.conn.Prepare(s.query)
@@ -48,7 +49,7 @@ func (s *stmt) Query(args []driver.Value) (driver.Rows, error) {
 	}
 
 	// build new query + args
-	s.query, args = build(s.query, args)
+	s.query, args = s.builder.BuildValues(s.query, args)
 
 	// prepare new statement
 	stmt, err := s.conn.Prepare(s.query)

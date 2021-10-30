@@ -28,13 +28,13 @@ type DriverSuite struct {
 }
 
 func (s *DriverSuite) SetupSuite() {
-	driver, err := driver.WrapByName(s.driver)
-	if err != nil {
-		s.T().Fatal(err)
-	}
+	var err error
 
 	name := "squint-" + s.driver
-	sql.Register(name, driver)
+	driver.Register(
+		name,
+		driver.To(s.driver),
+	)
 
 	s.db, err = sql.Open(name, s.dsn)
 	if err != nil {
