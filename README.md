@@ -119,7 +119,7 @@ b.Build("UPDATE user SET", updates, "WHERE id =", id)
 
 ### Pointers
 
-Generally, pointers are dereferenced and their values used as if they were passed directly. If the pointer is `nil`, it will map to a `NULL` value. Pointers can be useful in a `struct` as discussed below with the `NilValues` option.
+Generally, pointers are dereferenced and their values used as if they were passed directly. If the pointer is `nil`, it will map to a `NULL` value. Pointers can be useful in a `struct` as discussed below under "Empty Values".
 
 ### Conditions
 
