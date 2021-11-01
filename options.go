@@ -1,12 +1,20 @@
 package squint
 
+type emptyMode int
+
+const (
+	eDefault emptyMode = iota
+	eKeep
+	eOmit
+	eNull
+)
+
 // Options for the squint Builder
 type Options struct {
-	tag       string // field tag to use
-	keepNil   bool   // keep nil struct/map field values
-	keepEmpty bool   // keep empty string struct/map field values
-	logQuery  bool   // log queries?
-	logBinds  bool   // log binds?
+	tag      string    // field tag to use
+	empty    emptyMode // how to treat empty field values
+	logQuery bool      // log queries?
+	logBinds bool      // log binds?
 }
 
 // Option is a functional option
@@ -26,17 +34,24 @@ func Tag(tag string) Option {
 	}
 }
 
-// NilValues : keep nil struct/map field values?
-func NilValues(b bool) Option {
+// KeepEmpty will keep empty fields
+func KeepEmpty() Option {
 	return func(o *Options) {
-		o.keepNil = b
+		o.empty = eKeep
 	}
 }
 
-// EmptyValues : keep empty string struct/map field values
-func EmptyValues(b bool) Option {
+// OmitEmpty will omit empty fields
+func OmitEmpty() Option {
 	return func(o *Options) {
-		o.keepEmpty = b
+		o.empty = eOmit
+	}
+}
+
+// NullEmpty will treat empty fields as null
+func NullEmpty() Option {
+	return func(o *Options) {
+		o.empty = eNull
 	}
 }
 

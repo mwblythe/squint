@@ -23,7 +23,7 @@ type Builder struct {
 // NewBuilder returns a new Builder with the supplied options
 func NewBuilder(options ...Option) *Builder {
 	var b Builder
-	b.SetOption(Tag("db"))
+	b.SetOption(Tag("db"), KeepEmpty())
 	b.SetOption(options...)
 	return &b
 }
@@ -78,7 +78,7 @@ func If(condition bool, bits ...interface{}) Condition {
 }
 
 // HasValues evaluates whether a struct or map has values that
-// would be used according to the Builder's "Keep*"" options.
+// would be used according to the Builder's options.
 //
 // If you have a situation where one might be considered empty,
 // you can use this as a pre-check to avoid generating invalid SQL
