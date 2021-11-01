@@ -1,7 +1,5 @@
 # Squint - An interpolating SQL builder
 
-> Inspired by Perl's `SQL::Interp`
-
 ## Overview
 
 The `database/sql` package is very capable but somewhat tedious to use. You must hand-write full SQL queries with bind placeholders and provide a matching ordered list of variables. It's familiar, but inconvenient and repetitive. Squint makes things easier by allowing SQL and bind variables to be intermixed in their natural order. It also interpolates the variables into the proper bind placeholders and values, including complex types like structs and maps.  Squint is not an ORM, though. It's merely a pleasant query building assistant.
@@ -158,8 +156,9 @@ The `Builder` uses functional options to control behavior. They and their defaul
 
 ```go
 Tag(string)       // tag name for field mapping ("db")
-NilValues(bool)   // keep nil struct/map field values? (false)
-EmptyValues(bool) // keep empty string struct/map field values? (false)
+KeepEmpty()       // keep empty values in struct/map
+OmitEmpty()       // omit empty values in struct/map
+NullEmpty()       // treat empty values as nulls in struct/map
 LogQuery(bool)    // log queries (false)
 LogBinds(bool)    // log bind values from queries (false)
 Log(bool)         // shorthand to log both queries AND binds (false)
@@ -169,7 +168,7 @@ These can all be set via `NewBuilder()`:
 
 ```
 b := squint.NewBuilder(
-  squint.NilValues(true),
+  squint.NullEmpty(),
   squint.Log(true),
 )
 ```
@@ -184,56 +183,31 @@ b.Build(
 )
 ```
 
-A bit more about `NilValues` and `EmptyValues`:
+### Empty Values
 
-When a struct or map is processed, any string values that are empty (`""`) will be skipped if `EmptyValues` is false. Any values that are `nil` will be skipped if `NilValues` is false. This is the default behavior. Why?
-
-It's common to have a `struct` type that represents a full set of possible columns to use.  It's also common that only some of those values are supplied in a given scenario. For example:
+When a struct or map is processed, empty (Go "zero") values need special consideration. You can control how they are treated on a builder level with the `KeepEmpty()`, `OmitEmpty()`, and `NullEmpty()` options. These are mutually exclusive, so only the last one used will win. Each of these options has a struct field equivalent for selective override:
 
 ```go
-// the columns we allow to be updated
-type Updates struct {
-  FirstName  string
-  LastName   string
-  Department string
-}
-
-// update a user record
-func updateUser(id int, updates *Updates) error {
-  b := squint.NewBuilder()
-  sql, binds := b.Build("update users set", updates, "where id =", id)
-  _, err := db.Exec(sql, binds...)
-  return err
-}
-```
-
-What if only `updates.Department` is set? The zero value for a `string` is the empty string `("")`. If `EmptyValues` is `true`, the user record would be updated with an empty `FirstName` and `LastName`. This is generally not what you want. If `EmptyValues` is `false`, then only `Department` will be included in the update. This safer behavior is the default.
-
-Note that `EmptyValues` only applies to `strings`. This is because the zero values of other basic types are more common as real values, zero (`0`) in particular. So you can't really tell if one of these was explicltly set or not. How to handle this?
-
-If you're sure the zero value is not a value you want saved, you can set `omitempty` in a particular field's `db` tag.
-
-```go
-type Updates struct {
+type Person struct {
   Name string
-  Age  int    `db:"omitempty"`
+  Age  int        `db:"omitempty"`
+  NumChildren int `db:"keepempty"`
+  ManagerID int   `db:"nullempty"`
 }
 ```
 
-Otherwise, you can leverage the `NilValues` option. It is essentially the same as `EmptyValues`, but applies to pointers. So, you can do:
+Since the empty value for pointers is `nil`, you can sometimes leverage this:
 
 ```go
 type Updates struct {
-  FirstName  string
-  LastName   string
   Department string
-  Balance    *float64
+  Balance    *float64 `db:"omitempty"`
 }
 ```
 
-Now you can tell the difference between setting `Balance` to zero or not setting it at all. With `NilValues` set to `false`, an empty `Balance` would be skipped; otherwise it would be included as a SQL `NULL`.
+Now you can tell the difference between setting `Balance` to `0` or not setting it at all. With `omitempty`,  an empty `Balance` would be skipped, but a pointer to a `0` would be kept.
 
-**NOTE:** Neither `EmptyValues` or `NilValues` apply for multi-row inserts, since the columns must be consistent across rows.
+**NOTE:** If `OmitEmpty()` is in effect for a multi-row inserts, `KeepEmpty()` will be used instead. This is because the column count must be consistent across rows. `NullEmpty()` and `KeepEmpty()` will be used as set.
 
 ## Bridge
 
