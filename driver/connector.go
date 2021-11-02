@@ -3,6 +3,7 @@ package driver
 import (
 	"context"
 	"database/sql/driver"
+	"io"
 )
 
 type connectorWrapper struct {
@@ -31,4 +32,12 @@ func (w *connectorWrapper) builder() *builder {
 	}
 
 	panic("no builder in connector")
+}
+
+func (w *connectorWrapper) Close() error {
+	if c, ok := w.Connector.(io.Closer); ok {
+		return c.Close()
+	}
+
+	return nil
 }

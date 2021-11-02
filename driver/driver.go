@@ -99,3 +99,28 @@ func wrap(orig driver.Driver, build *squint.Builder) driver.Driver {
 func hasPlaceholders(query string) bool {
 	return strings.Contains(query, "?")
 }
+
+// convert from []Value to []NamedValue
+func valsToNamed(vals []driver.Value) (named []driver.NamedValue) {
+	named = make([]driver.NamedValue, len(vals))
+
+	for n := range vals {
+		named[n] = driver.NamedValue{
+			Ordinal: n + 1,
+			Value:   vals[n],
+		}
+	}
+
+	return
+}
+
+// convert from []NamedValue to []Value
+func namedToVals(named []driver.NamedValue) (vals []driver.Value) {
+	vals = make([]driver.Value, len(named))
+
+	for n := range named {
+		vals[n] = named[n].Value
+	}
+
+	return
+}
