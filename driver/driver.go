@@ -3,7 +3,6 @@ package driver
 import (
 	"database/sql"
 	"database/sql/driver"
-	"log"
 	"strings"
 
 	"github.com/mwblythe/squint"
@@ -32,18 +31,15 @@ type driverWrapper struct {
 }
 
 // Open a connection
-func (d *driverWrapper) Open(name string) (driver.Conn, error) {
-	log.Println("OPEN")
-
+func (d *driverWrapper) Open(name string) (c driver.Conn, err error) {
 	orig, err := d.Driver.Open(name)
-	if err != nil {
-		return nil, err
+	if err == nil {
+		c = &connWrapper{
+			conn:    orig.(conn),
+			builder: d.builder,
+		}
 	}
-
-	return &connWrapper{
-		conn:    orig.(conn),
-		builder: d.builder,
-	}, nil
+	return
 }
 
 // wrapped driver implementing DriverContext
@@ -59,33 +55,28 @@ type driverContextWrapper struct { // nolint
 }
 
 // Open a connection
-func (d *driverContextWrapper) Open(name string) (driver.Conn, error) {
-	log.Println("Open")
-
+func (d *driverContextWrapper) Open(name string) (c driver.Conn, err error) {
 	orig, err := d.driverContext.Open(name)
-	if err != nil {
-		return nil, err
+	if err == nil {
+		c = &connContextWrapper{
+			connContext: orig.(connContext),
+			builder:     d.builder,
+		}
 	}
 
-	return &connContextWrapper{
-		connContext: orig.(connContext),
-		builder:     d.builder,
-	}, nil
+	return
 }
 
 // OpenConnector opens a connector
-func (d *driverContextWrapper) OpenConnector(name string) (driver.Connector, error) {
-	log.Println("OpenConnector")
-
-	wrapped, err := d.driverContext.OpenConnector(name)
-	if err != nil {
-		return nil, err
+func (d *driverContextWrapper) OpenConnector(name string) (c driver.Connector, err error) {
+	orig, err := d.driverContext.OpenConnector(name)
+	if err == nil {
+		c = &connectorWrapper{
+			driver:    d,
+			Connector: orig,
+		}
 	}
-
-	return &connectorWrapper{
-		driver:    d,
-		Connector: wrapped,
-	}, nil
+	return
 }
 
 // wrap the provided Driver

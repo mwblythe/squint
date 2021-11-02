@@ -3,7 +3,6 @@ package driver
 import (
 	"context"
 	"database/sql/driver"
-	"log"
 )
 
 type connCore interface {
@@ -28,18 +27,14 @@ func (c *connWrapper) CheckNamedValue(*driver.NamedValue) error {
 }
 
 func (c *connWrapper) Exec(query string, args []driver.Value) (driver.Result, error) {
-	log.Println("Exec")
 	return c.conn.Exec(c.builder.BuildValues(query, args))
 }
 
 func (c *connWrapper) Query(query string, args []driver.Value) (driver.Rows, error) {
-	log.Println("Query")
 	return c.conn.Query(c.builder.BuildValues(query, args))
 }
 
 func (c *connWrapper) Prepare(query string) (driver.Stmt, error) {
-	log.Println("Prepare")
-
 	if hasPlaceholders(query) {
 		return c.conn.Prepare(query)
 	}
@@ -72,8 +67,6 @@ func (c *connContextWrapper) CheckNamedValue(*driver.NamedValue) error {
 }
 
 func (c *connContextWrapper) PrepareContext(ctx context.Context, query string) (driver.Stmt, error) {
-	log.Println("PrepareContext", query)
-
 	if hasPlaceholders(query) {
 		return c.connContext.PrepareContext(ctx, query)
 	}
@@ -86,11 +79,9 @@ func (c *connContextWrapper) PrepareContext(ctx context.Context, query string) (
 }
 
 func (c *connContextWrapper) ExecContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
-	log.Println("ExecContext")
 	return c.connContext.ExecContext(c.builder.BuildContext(ctx, query, args))
 }
 
 func (c *connContextWrapper) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
-	log.Println("QueryContext")
 	return c.connContext.QueryContext(c.builder.BuildContext(ctx, query, args))
 }

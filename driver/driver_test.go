@@ -3,9 +3,11 @@ package driver_test
 import (
 	"context"
 	"database/sql"
+	drv "database/sql/driver"
 	"fmt"
 	"strings"
 
+	"github.com/mwblythe/squint"
 	"github.com/mwblythe/squint/driver"
 	"github.com/stretchr/testify/suite"
 )
@@ -71,6 +73,29 @@ func (s *DriverSuite) TestDriver() {
 
 	s.Run("Transaction", func() {
 		s.Transaction()
+	})
+}
+
+func (s *DriverSuite) TestFuzz() {
+	d := s.db.Driver()
+	s.NotNil(d)
+
+	s.Panics(func() {
+		driver.Register(s.driver + "-foo1")
+	})
+
+	if _, ok := d.(drv.DriverContext); ok {
+		open, err := d.Open(s.dsn)
+		s.Nil(err)
+		open.Close()
+	}
+
+	s.NotPanics(func() {
+		driver.Register(
+			s.driver+"-foo2",
+			driver.ToDriver(d),
+			driver.Builder(squint.NewBuilder()),
+		)
 	})
 }
 

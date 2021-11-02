@@ -3,7 +3,6 @@ package driver
 import (
 	"context"
 	"database/sql/driver"
-	"log"
 )
 
 type connectorWrapper struct {
@@ -11,26 +10,23 @@ type connectorWrapper struct {
 	driver.Connector
 }
 
-func (c *connectorWrapper) Driver() driver.Driver {
-	return c.driver
+func (w *connectorWrapper) Driver() driver.Driver {
+	return w.driver
 }
 
-func (c *connectorWrapper) Connect(ctx context.Context) (driver.Conn, error) {
-	log.Println("connector.Connect")
-
-	orig, err := c.Connector.Connect(ctx)
-	if err != nil {
-		return nil, err
+func (w *connectorWrapper) Connect(ctx context.Context) (c driver.Conn, err error) {
+	orig, err := w.Connector.Connect(ctx)
+	if err == nil {
+		c = &connContextWrapper{
+			connContext: orig.(connContext),
+			builder:     w.builder(),
+		}
 	}
-
-	return &connContextWrapper{
-		connContext: orig.(connContext),
-		builder:     c.builder(),
-	}, nil
+	return
 }
 
-func (c *connectorWrapper) builder() *builder {
-	if cb, ok := c.driver.(*driverContextWrapper); ok {
+func (w *connectorWrapper) builder() *builder {
+	if cb, ok := w.driver.(*driverContextWrapper); ok {
 		return cb.builder
 	}
 

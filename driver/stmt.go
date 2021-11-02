@@ -3,7 +3,6 @@ package driver
 import (
 	"database/sql/driver"
 	"errors"
-	"log"
 )
 
 // TODO: do we need ExecContext + QueryContext?
@@ -21,8 +20,6 @@ func (s *stmt) NumInput() int {
 }
 
 func (s *stmt) Exec(args []driver.Value) (driver.Result, error) {
-	log.Println("Stmt.Exec")
-
 	if s.conn == nil {
 		return nil, errors.New("statement already closed")
 	}
@@ -42,8 +39,6 @@ func (s *stmt) Exec(args []driver.Value) (driver.Result, error) {
 }
 
 func (s *stmt) Query(args []driver.Value) (driver.Rows, error) {
-	log.Println("Stmt.Exec")
-
 	if s.conn == nil {
 		return nil, errors.New("statement already closed")
 	}

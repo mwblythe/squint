@@ -1,3 +1,5 @@
+//+build sqlite
+
 package driver_test
 
 import (
