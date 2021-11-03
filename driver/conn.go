@@ -52,13 +52,38 @@ type connContext interface {
 	driver.QueryerContext
 	driver.ConnPrepareContext
 	driver.ConnBeginTx
-	//	driver.SessionResetter // XXX
-	//	driver.Validator       // XXX
+}
+
+type connResetter interface {
+	driver.SessionResetter
+	driver.Validator
 }
 
 type connContextWrapper struct {
 	connContext
 	builder *builder
+}
+
+type connResetterWrapper struct {
+	*connContextWrapper
+	connResetter
+}
+
+// wrap a context-aware Conn, retaining optional interfaces if supported
+func wrapConnContext(orig driver.Conn, builder *builder) driver.Conn {
+	cc := connContextWrapper{
+		builder:     builder,
+		connContext: orig.(connContext),
+	}
+
+	if cr, ok := orig.(connResetter); ok {
+		return &connResetterWrapper{
+			connContextWrapper: &cc,
+			connResetter:       cr,
+		}
+	}
+
+	return &cc
 }
 
 func (c *connContextWrapper) CheckNamedValue(*driver.NamedValue) error {

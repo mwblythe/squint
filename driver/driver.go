@@ -58,10 +58,7 @@ type driverContextWrapper struct { // nolint
 func (d *driverContextWrapper) Open(name string) (c driver.Conn, err error) {
 	orig, err := d.driverContext.Open(name)
 	if err == nil {
-		c = &connContextWrapper{
-			connContext: orig.(connContext),
-			builder:     d.builder,
-		}
+		c = wrapConnContext(orig, d.builder)
 	}
 
 	return

@@ -1,5 +1,6 @@
-.DS_Store
+*.code-workspace
 *.swp
+.DS_Store
+.cover
 .vscode
 .vstags
-*.code-workspace

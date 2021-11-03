@@ -18,10 +18,7 @@ func (w *connectorWrapper) Driver() driver.Driver {
 func (w *connectorWrapper) Connect(ctx context.Context) (c driver.Conn, err error) {
 	orig, err := w.Connector.Connect(ctx)
 	if err == nil {
-		c = &connContextWrapper{
-			connContext: orig.(connContext),
-			builder:     w.builder(),
-		}
+		c = wrapConnContext(orig, w.builder())
 	}
 	return
 }
