@@ -5,6 +5,7 @@ package driver_test
 import (
 	"testing"
 
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/suite"
 	_ "modernc.org/sqlite"
 )
@@ -14,7 +15,6 @@ type SQLiteSuite struct {
 }
 
 func (s *SQLiteSuite) SetupSuite() {
-	s.DriverSuite.driver = "sqlite"
 	s.DriverSuite.dsn = "file::memory:"
 
 	s.DriverSuite.SetupSuite()
@@ -31,5 +31,13 @@ func (s *SQLiteSuite) SetupSuite() {
 }
 
 func TestSQLite(t *testing.T) {
-	suite.Run(t, &SQLiteSuite{})
+	var s SQLiteSuite
+	s.driver = "sqlite"
+	suite.Run(t, &s)
+}
+
+func TestSQLite3(t *testing.T) {
+	var s SQLiteSuite
+	s.driver = "sqlite3"
+	suite.Run(t, &s)
 }
