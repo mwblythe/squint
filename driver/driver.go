@@ -9,6 +9,11 @@ import (
 	"github.com/mwblythe/squint"
 )
 
+// compile-time interface checks
+var (
+	_ driver.Driver = (*sqDriver)(nil)
+)
+
 // Register a squint wrapped sql driver
 func Register(toDriver string, o ...Option) {
 	var drv sqDriver

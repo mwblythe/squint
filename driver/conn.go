@@ -6,6 +6,17 @@ import (
 	"database/sql/driver"
 )
 
+// compile-time interface checks
+var (
+	_ driver.Conn               = (*sqConn)(nil)
+	_ driver.Pinger             = (*sqConn)(nil)
+	_ driver.ExecerContext      = (*sqConn)(nil)
+	_ driver.QueryerContext     = (*sqConn)(nil)
+	_ driver.ConnPrepareContext = (*sqConn)(nil)
+	_ driver.ConnBeginTx        = (*sqConn)(nil)
+	_ driver.NamedValueChecker  = (*sqConn)(nil)
+)
+
 // sqConn is a proxy that will pre-process queries with squint Builder
 type sqConn struct {
 	conn    *sql.Conn

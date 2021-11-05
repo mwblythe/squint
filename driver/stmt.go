@@ -1,10 +1,15 @@
 package driver
 
-// TODO: StmtExecContext and StmtQueryContext
-
 import (
 	"database/sql"
 	"database/sql/driver"
+)
+
+// compile-time interface checks
+var (
+	_ driver.Stmt = (*sqStmt)(nil)
+
+// TODO: StmtExecContext and StmtQueryContext
 )
 
 // sqStmt is a sql.Stmt wrapper to implement the driver.Stmt interface
