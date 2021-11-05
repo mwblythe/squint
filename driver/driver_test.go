@@ -3,11 +3,9 @@ package driver_test
 import (
 	"context"
 	"database/sql"
-	drv "database/sql/driver"
 	"fmt"
 	"strings"
 
-	"github.com/mwblythe/squint"
 	"github.com/mwblythe/squint/driver"
 	"github.com/stretchr/testify/suite"
 )
@@ -31,14 +29,9 @@ type DriverSuite struct {
 
 func (s *DriverSuite) SetupSuite() {
 	var err error
+	driver.Register(s.driver)
 
-	name := "squint-" + s.driver
-	driver.Register(
-		name,
-		driver.To(s.driver),
-	)
-
-	s.db, err = sql.Open(name, s.dsn)
+	s.db, err = sql.Open("squint-"+s.driver, s.dsn)
 	if err != nil {
 		s.T().Fatal(err)
 	}
@@ -76,27 +69,7 @@ func (s *DriverSuite) TestDriver() {
 	})
 }
 
-func (s *DriverSuite) TestFuzz() {
-	d := s.db.Driver()
-	s.NotNil(d)
-
-	s.Panics(func() {
-		driver.Register(s.driver + "-foo1")
-	})
-
-	if _, ok := d.(drv.DriverContext); ok {
-		open, err := d.Open(s.dsn)
-		s.Nil(err)
-		open.Close()
-	}
-
-	s.NotPanics(func() {
-		driver.Register(
-			s.driver+"-foo2",
-			driver.ToDriver(d),
-			driver.Builder(squint.NewBuilder()),
-		)
-	})
+func (s *DriverSuite) xTestFuzz() {
 }
 
 func (s *DriverSuite) InsertPerson() {
@@ -173,8 +146,8 @@ func (s *DriverSuite) Transaction() {
 }
 
 func (s *DriverSuite) Prepared() {
-	queryRow := func(query string) {
-		stmt, err := s.db.PrepareContext(ctx, query)
+	s.Run("WithPlaceholders", func() {
+		stmt, err := s.db.PrepareContext(ctx, "select name from people where id = ?")
 		if !s.Nil(err) {
 			return
 		}
@@ -183,13 +156,17 @@ func (s *DriverSuite) Prepared() {
 		row := stmt.QueryRowContext(ctx, s.count)
 		s.Nil(row.Scan(&name))
 		s.NotEmpty(name)
-	}
-
-	s.Run("WithPlaceholders", func() {
-		queryRow("select name from people where id = ?")
 	})
 
 	s.Run("WithoutPlaceholders", func() {
-		queryRow("select name from people where id =")
+		stmt, err := s.db.PrepareContext(ctx, "select count(*) from people")
+		if !s.Nil(err) {
+			return
+		}
+
+		var count int64
+		row := stmt.QueryRowContext(ctx)
+		s.Nil(row.Scan(&count))
+		s.Equal(s.count, count)
 	})
 }

@@ -2,111 +2,59 @@ package driver
 
 import (
 	"context"
+	"database/sql"
 	"database/sql/driver"
 )
 
-type connCore interface {
-	driver.Conn
-	driver.Pinger
-}
-
-type conn interface {
-	connCore
-	driver.Execer  // nolint
-	driver.Queryer // nolint
-}
-
-type connWrapper struct {
-	conn
+// sqConn is a proxy that will pre-process queries with squint Builder
+type sqConn struct {
+	conn    *sql.Conn
 	builder *builder
 }
 
-func (c *connWrapper) CheckNamedValue(*driver.NamedValue) error {
-	// accept all bind types
-	return nil
+func newConn(c *sql.Conn, b *builder) *sqConn {
+	return &sqConn{conn: c, builder: b}
 }
 
-func (c *connWrapper) Exec(query string, args []driver.Value) (driver.Result, error) {
-	return c.conn.Exec(c.builder.BuildValues(query, args))
+func (c *sqConn) CheckNamedValue(*driver.NamedValue) error {
+	return nil // accept all bind types
 }
 
-func (c *connWrapper) Query(query string, args []driver.Value) (driver.Rows, error) {
-	return c.conn.Query(c.builder.BuildValues(query, args))
+func (c *sqConn) Prepare(query string) (driver.Stmt, error) {
+	return c.PrepareContext(context.Background(), query)
 }
 
-func (c *connWrapper) Prepare(query string) (driver.Stmt, error) {
-	if hasPlaceholders(query) {
-		return c.conn.Prepare(query)
-	}
-
-	return &stmt{
-		conn:    c.conn,
-		query:   query,
-		builder: c.builder,
-	}, nil
+func (c *sqConn) PrepareContext(ctx context.Context, query string) (driver.Stmt, error) {
+	stmt, err := c.conn.PrepareContext(ctx, query)
+	return sqStmt{stmt}, err
 }
 
-type connContext interface {
-	connCore
-	driver.ExecerContext
-	driver.QueryerContext
-	driver.ConnPrepareContext
-	driver.ConnBeginTx
+func (c *sqConn) Begin() (driver.Tx, error) {
+	return c.conn.BeginTx(context.Background(), nil)
 }
 
-type connResetter interface {
-	driver.SessionResetter
-	driver.Validator
+func (c *sqConn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, error) {
+	return c.conn.BeginTx(ctx, &sql.TxOptions{
+		Isolation: sql.IsolationLevel(opts.Isolation),
+		ReadOnly:  opts.ReadOnly,
+	})
 }
 
-type connContextWrapper struct {
-	connContext
-	builder *builder
+func (c *sqConn) Close() error {
+	return c.conn.Close()
 }
 
-type connResetterWrapper struct {
-	*connContextWrapper
-	connResetter
+func (c *sqConn) Ping(ctx context.Context) error {
+	return c.conn.PingContext(ctx)
 }
 
-// wrap a context-aware Conn, retaining optional interfaces if supported
-func wrapConnContext(orig driver.Conn, builder *builder) driver.Conn {
-	cc := connContextWrapper{
-		builder:     builder,
-		connContext: orig.(connContext),
-	}
-
-	if cr, ok := orig.(connResetter); ok {
-		return &connResetterWrapper{
-			connContextWrapper: &cc,
-			connResetter:       cr,
-		}
-	}
-
-	return &cc
+func (c *sqConn) ExecContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
+	query, binds := c.builder.BuildNamed(query, args)
+	return c.conn.ExecContext(ctx, query, binds...)
 }
 
-func (c *connContextWrapper) CheckNamedValue(*driver.NamedValue) error {
-	// accept all bind types
-	return nil
-}
-
-func (c *connContextWrapper) PrepareContext(ctx context.Context, query string) (driver.Stmt, error) {
-	if hasPlaceholders(query) {
-		return c.connContext.PrepareContext(ctx, query)
-	}
-
-	return &stmt{
-		conn:    c.connContext,
-		query:   query,
-		builder: c.builder,
-	}, nil
-}
-
-func (c *connContextWrapper) ExecContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
-	return c.connContext.ExecContext(c.builder.BuildContext(ctx, query, args))
-}
-
-func (c *connContextWrapper) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
-	return c.connContext.QueryContext(c.builder.BuildContext(ctx, query, args))
+func (c *sqConn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
+	query, binds := c.builder.BuildNamed(query, args)
+	r, err := c.conn.QueryContext(ctx, query, binds...)
+	return sqRows{r}, err
 }
