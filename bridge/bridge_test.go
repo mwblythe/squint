@@ -1,4 +1,4 @@
-package squint
+package bridge_test
 
 import (
 	"context"
@@ -8,15 +8,17 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/jmoiron/sqlx"
+	"github.com/mwblythe/squint"
+	"github.com/mwblythe/squint/bridge"
 	"github.com/stretchr/testify/suite"
 )
 
-type DBSuite struct {
+type BridgeSuite struct {
 	suite.Suite
 	db      *sqlx.DB
 	mock    sqlmock.Sqlmock
-	builder *Builder
-	bDB     *DB
+	builder *squint.Builder
+	bDB     *bridge.DB
 }
 
 type QueryTestInfo struct {
@@ -25,7 +27,7 @@ type QueryTestInfo struct {
 	outBinds []interface{}
 }
 
-func (s *DBSuite) SetupSuite() {
+func (s *BridgeSuite) SetupSuite() {
 	var err error
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	if err != nil {
@@ -37,16 +39,16 @@ func (s *DBSuite) SetupSuite() {
 	s.db = sqlx.NewDb(db, "sqlmock")
 	s.NotNil(s.db)
 
-	s.builder = NewBuilder()
+	s.builder = squint.NewBuilder()
 }
 
-func (s *DBSuite) TestBridgeDB() {
-	s.bDB = BridgeDB(s.db, s.builder)
+func (s *BridgeSuite) TestDB() {
+	s.bDB = bridge.NewDB(s.db, s.builder)
 	s.NotNil(s.bDB)
 	s.testBridge(&s.bDB.Squint)
 }
 
-func (s *DBSuite) TestBridgeTx() {
+func (s *BridgeSuite) TestTx() {
 	s.mock.ExpectBegin()
 	tx, err := s.bDB.Beginx()
 	s.Nil(err)
@@ -69,17 +71,17 @@ func (s *DBSuite) TestBridgeTx() {
 	s.Nil(s.mock.ExpectationsWereMet())
 }
 
-func (s *DBSuite) testBridge(b *Bridge) {
+func (s *BridgeSuite) testBridge(b *bridge.Bridge) {
 	s.Run("Exec", func() { s.testExec(b) })
 	s.Run("QueryRow", func() { s.testQueryRow(b) })
 	s.Run("Query", func() { s.testQuery(b) })
 }
 
-func (s *DBSuite) expectExec(info *QueryTestInfo) {
+func (s *BridgeSuite) expectExec(info *QueryTestInfo) {
 	s.mock.ExpectExec(info.outSQL).WithArgs(info.getValues()...).WillReturnResult(sqlmock.NewResult(0, 1))
 }
 
-func (s *DBSuite) testExec(b *Bridge) {
+func (s *BridgeSuite) testExec(b *bridge.Bridge) {
 	info := s.getTestInfo("DELETE FROM users WHERE id =", 10)
 
 	// a basic call to straight Exec
@@ -108,13 +110,13 @@ func (s *DBSuite) testExec(b *Bridge) {
 	s.Nil(s.mock.ExpectationsWereMet())
 }
 
-func (s *DBSuite) expectQueryRow(info *QueryTestInfo) {
+func (s *BridgeSuite) expectQueryRow(info *QueryTestInfo) {
 	row := sqlmock.NewRows([]string{"id"})
 	row.AddRow(10)
 	s.mock.ExpectQuery(info.outSQL).WithArgs(info.getValues()...).WillReturnRows(row)
 }
 
-func (s *DBSuite) testQueryRow(b *Bridge) {
+func (s *BridgeSuite) testQueryRow(b *bridge.Bridge) {
 	var id int
 	name := "Frank"
 	info := s.getTestInfo("SELECT id FROM users WHERE name =", &name)
@@ -157,14 +159,14 @@ func (s *DBSuite) testQueryRow(b *Bridge) {
 	s.Nil(s.mock.ExpectationsWereMet())
 }
 
-func (s *DBSuite) expectQuery(info *QueryTestInfo) {
+func (s *BridgeSuite) expectQuery(info *QueryTestInfo) {
 	rows := sqlmock.NewRows([]string{"id", "status"})
 	rows.AddRow(10, "active")
 	rows.AddRow(10, "retired")
 	s.mock.ExpectQuery(info.outSQL).WithArgs(info.getValues()...).WillReturnRows(rows)
 }
 
-func (s *DBSuite) testQuery(b *Bridge) {
+func (s *BridgeSuite) testQuery(b *bridge.Bridge) {
 	info := s.getTestInfo("SELECT id, status FROM users WHERE username IN",
 		[]string{"hsimpson", "mferguson"})
 
@@ -223,7 +225,7 @@ func (s *DBSuite) testQuery(b *Bridge) {
 	s.Nil(s.mock.ExpectationsWereMet())
 }
 
-func (s *DBSuite) getTestInfo(bits ...interface{}) *QueryTestInfo {
+func (s *BridgeSuite) getTestInfo(bits ...interface{}) *QueryTestInfo {
 	info := QueryTestInfo{inBits: bits}
 	info.outSQL, info.outBinds = s.builder.Build(info.inBits...)
 	return &info
@@ -238,6 +240,6 @@ func (info *QueryTestInfo) getValues() (out []driver.Value) {
 	return
 }
 
-func TestDB(t *testing.T) {
-	suite.Run(t, &DBSuite{})
+func TestBridge(t *testing.T) {
+	suite.Run(t, &BridgeSuite{})
 }

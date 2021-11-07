@@ -19,7 +19,7 @@ sql, binds := b.Build("select * from users where id in", idList, "and active = 1
 rows, err := db.Query(sql, binds...)
 ```
 
-The `sql` and `binds` returned are ready to pass into the standard `database/sql` query functions, such as `Exec`, `Query` and `QueryRow`. (See [Bridge](#bridge) for an easier way)
+The `sql` and `binds` returned are ready to pass into the standard `database/sql` query functions, such as `Exec`, `Query` and `QueryRow`. (See [driver](driver) for an easier way)
 
 ### Basic Variables
 

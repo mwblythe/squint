@@ -1,4 +1,4 @@
-package squint
+package bridge
 
 // TODO: should this be a separate module so that the base
 // squint doesn't have a dependency on sqlx?
@@ -8,6 +8,7 @@ import (
 	"database/sql"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/mwblythe/squint"
 )
 
 // Target is the destination of a Bridge.
@@ -47,7 +48,7 @@ type Target interface {
 // rows, err := bridge.Query("SELECT * FROM table WHERE", conditions)
 //
 type Bridge struct {
-	*Builder
+	*squint.Builder
 	target Target
 }
 
@@ -159,8 +160,8 @@ type Tx struct {
 	Squint Bridge
 }
 
-// BridgeDB creates a bridge between a database handle and a Builder
-func BridgeDB(db *sqlx.DB, builder *Builder) *DB {
+// NewDB creates a bridge between a database handle and a Builder
+func NewDB(db *sqlx.DB, builder *squint.Builder) *DB {
 	return &DB{db, Bridge{builder, db}}
 }
 
@@ -170,7 +171,7 @@ func (db *DB) Begin() (*Tx, error) {
 }
 
 // bridgeTX creates a new bridge for the supplied Tx
-func (db *DB) bridgeTx(tx *sqlx.Tx) *Tx {
+func (db *DB) newTx(tx *sqlx.Tx) *Tx {
 	return &Tx{tx, Bridge{db.Squint.Builder, tx}}
 }
 
@@ -180,10 +181,10 @@ func (db *DB) Beginx() (*Tx, error) {
 	if err != nil {
 		return nil, err
 	}
-	return db.bridgeTx(tx), nil
+	return db.newTx(tx), nil
 }
 
 // MustBegin starts and bridges a transaction, but panics on error
 func (db *DB) MustBegin() *Tx {
-	return db.bridgeTx(db.DB.MustBegin())
+	return db.newTx(db.DB.MustBegin())
 }

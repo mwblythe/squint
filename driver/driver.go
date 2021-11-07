@@ -14,7 +14,15 @@ var (
 	_ driver.Driver = (*sqDriver)(nil)
 )
 
-// Register a squint wrapped sql driver
+// Register a sql driver to produce a squint-enabled version.
+//
+// toDriver is the original sql driver, e.g. "mysql"
+//
+// Options include:
+//
+// Name(string) : name to use for the squint driver. (Default "squint-" + toDriver)
+// Builder(*Builder) : squint Builder to use. (Default is Builder with no options)
+//
 func Register(toDriver string, o ...Option) {
 	var drv sqDriver
 	drv.toDriver = toDriver
