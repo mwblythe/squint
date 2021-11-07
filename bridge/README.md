@@ -29,10 +29,10 @@ go get github.com/mwblythe/squint
 
 ```go
 import (
-  _ "modernc.org/sqlite"  
+  _ "modernc.org/sqlite"
   "github.com/jmoiron/sqlx"
   "github.com/mwblythe/squint"
-  "github.com/mwblythe/squint/bridge"  
+  "github.com/mwblythe/squint/bridge"
 )
 
 // open database and bridge it
@@ -56,9 +56,9 @@ tx := db.Begin()
 
 // use the same Squint extensions
 if err := tx.Squint.Exec("insert into user", newUser); err == nil {
-  db.Commit()
+  tx.Commit()
 } else {
-  db.Rollback()
+  tx.Rollback()
 }
 ```
 

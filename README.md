@@ -19,7 +19,9 @@ sql, binds := b.Build("select * from users where id in", idList, "and active = 1
 rows, err := db.Query(sql, binds...)
 ```
 
-The `sql` and `binds` returned are ready to pass into the standard `database/sql` query functions, such as `Exec`, `Query` and `QueryRow`. (See [driver](driver) for an easier way)
+The `sql` and `binds` returned are ready to pass into the standard `database/sql` query functions, such as `Exec`, `Query` and `QueryRow`.
+
+💡 See [driver](driver) for an easier way.
 
 ### Basic Variables
 
@@ -152,19 +154,19 @@ type User struct {
 
 ### Options
 
-The `Builder` uses functional options to control behavior. They and their defaults are:
+The `Builder` uses functional options to control behavior:
 
-```go
-Tag(string)                 // tag name for field mapping ("db")
-KeepEmpty()                 // keep empty values in struct/map
-OmitEmpty()                 // omit empty values in struct/map
-NullEmpty()                 // treat empty values as nulls in struct/map
-WithEmptyFn(squint.EmptyFn) // use a custom empty value handler
-WithDefaultEmpty()          // use default empty value handler
-LogQuery(bool)              // log queries (false)
-LogBinds(bool)              // log bind values from queries (false)
-Log(bool)                   // shorthand to log both queries AND binds (false)
-```
+| Option                       | Purpose                                   | Default |
+| ---------------------------- | ----------------------------------------- | ------- |
+| `Tag(string)`                | tag name for field mapping                | "db"    |
+| `KeepEmpty()`                | keep empty values in struct/map           | On      |
+| `OmitEmpty()`                | omit empty values in struct/map           | Off     |
+| `NullEmpty()`                | treat empty values as nulls in struct/map | Off     |
+| `WithEmptyFn(squint.EmptyFn)`| use a custom empty value handler          | nil     |
+| `WithDefaultEmpty()`         | use default empty value handler           | On      |
+| `LogQuery(bool)`             | log queries                               | `false` |
+| `LogBinds(bool)`             | log bind values                           | `false` |
+| `Log(bool)`                  | shorthand to log both queries AND binds   | `false` |
 
 These can all be set via `NewBuilder()`:
 
@@ -231,7 +233,7 @@ func doEmpty(in interface{}) (out interface{}, keep bool) {
   if s, ok := in.(string); ok {
     return "N/A", true
   }
-  
+
   return nil, false
 }
 
@@ -249,45 +251,6 @@ b.Build(
 
 To switch back to the default empty value handler, use the `WithDefaultEmpty()` option.
 
-## Bridge
+## See Also
 
-Because of the way variadic functions work, you cannot literally pass the return values of `Build()` directly into something like `Exec()`.
-
-```go
-// NOPE: you can't do this
-err := db.Exec(b.Build("insert into user", newUser))
-
-// instead, you have to do this
-sql, binds := b.Build("insert into user", newUser)
-err := db.Exec(sql, binds...)
-```
-
-To make this more convenient, you can use a Squint database `Bridge`.
-
-```go
-// open database and build a bridge
-con, err := sqlx.Open("mysql", dsn)
-db := squint.BridgeDB(con, squint.NewBuilder())
-
-// now queries are easier via the Squint extension
-err := db.Squint.Exec("insert into user", newUser)
-
-// but you can still do things the old way too
-err := db.Exec("update users set balance = ? where id = ?", 0.00, 10)
-```
-
-The bridge has wrapper functions for the standard `Exec`, `Query` and `QueryRow`, as well as the `sqlx` extensions `MustExec`, `Queryx`, `QueryRowx`, `Get` and `Select`. Wherever those original functions expect `sql` and `binds`, the `Squint` versions expect Squint `Build()` parameters.
-
-The bridged database also returns a bridged transaction if you call `Begin`, `Beginx`, or `MustBegin`:
-
-```go
-// using the above bridged database
-tx := db.Begin()
-
-// use the same Squint extensions
-if err := tx.Squint.Exec("insert into user", newUser); err == nil {
-  db.Commit()
-} else {
-  db.Rollback()
-}
-```
+For a more seamless solution, see the squint [driver](driver) package.
