@@ -65,32 +65,49 @@ func (s *SquintSuite) TestPointer() {
 }
 
 func (s *SquintSuite) TestStruct() {
-	s.check(
-		"SELECT * FROM users WHERE ID = ? AND name = ? AND Status IN ( ?, ? )",
-		binds{10, "Frank", 2, 4},
-		"SELECT * FROM users WHERE",
-		struct {
-			ID     int
-			Name   string `db:"name"`
-			Secret bool   `db:"-"`
-			wealth float32
-			Status []int
-		}{10, "Frank", true, 1000.00, []int{2, 4}},
-	)
+	s.Run("basic", func() {
+		s.check(
+			"SELECT * FROM users WHERE ID = ? AND name = ? AND Status IN ( ?, ? )",
+			binds{10, "Frank", 2, 4},
+			"SELECT * FROM users WHERE",
+			struct {
+				ID     int
+				Name   string `db:"name"`
+				Secret bool   `db:"-"`
+				wealth float32
+				Status []int
+			}{10, "Frank", true, 1000.00, []int{2, 4}},
+		)
+	})
 
 	type person struct {
 		First string
 		Last  string
 	}
-	s.check(
-		"WHERE ID = ? AND First = ? AND Last = ?",
-		binds{10, "Frank", "Gallagher"},
-		"WHERE",
-		struct {
-			ID int
-			person
-		}{10, person{"Frank", "Gallagher"}},
-	)
+
+	s.Run("embed", func() {
+		s.check(
+			"WHERE ID = ? AND First = ? AND Last = ?",
+			binds{10, "Frank", "Gallagher"},
+			"WHERE",
+			struct {
+				ID int
+				person
+			}{10, person{"Frank", "Gallagher"}},
+		)
+	})
+
+	s.Run("embed+skip", func() {
+		s.check(
+			"WHERE ID = ?",
+			binds{10},
+			"WHERE",
+			struct {
+				ID     int
+				person `db:"-"`
+			}{10, person{"Frank", "Gallagher"}},
+		)
+	})
 }
 
 func (s *SquintSuite) TestMap() {
