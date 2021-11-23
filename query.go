@@ -270,9 +270,11 @@ func (q *query) siftStruct(src *reflect.Value) ([]string, []interface{}) {
 		fieldVal := src.Field(i)
 
 		if fieldVal.Kind() == reflect.Struct && field.Anonymous {
-			c, b := q.siftStruct(&fieldVal)
-			cols = append(cols, c...)
-			binds = append(binds, b...)
+			if q.tagValue(field) != "-" {
+				c, b := q.siftStruct(&fieldVal)
+				cols = append(cols, c...)
+				binds = append(binds, b...)
+			}
 		} else {
 			name, mode := q.mapField(field)
 			if name == "" {
@@ -312,6 +314,14 @@ func (q *query) checkValue(in interface{}, mode emptyMode) (interface{}, bool) {
 	return in, true // eKeep
 }
 
+// tagValue returns a field's tag value (if any)
+func (q *query) tagValue(field reflect.StructField) string {
+	if q.opt.tag != "" {
+		return field.Tag.Get(q.opt.tag)
+	}
+	return ""
+}
+
 // mapField maps a struct field to a db column name
 func (q *query) mapField(field reflect.StructField) (name string, mode emptyMode) {
 	// check for unexported fields
@@ -320,23 +330,21 @@ func (q *query) mapField(field reflect.StructField) (name string, mode emptyMode
 	}
 
 	// now the field tag
-	if q.opt.tag != "" {
-		tag := field.Tag.Get(q.opt.tag)
-		if tag == "-" {
-			return
-		}
+	tag := q.tagValue(field)
+	if tag == "-" {
+		return
+	}
 
-		for _, t := range strings.Split(tag, ",") {
-			switch t {
-			case "keepempty":
-				mode = eKeep
-			case "omitempty":
-				mode = eOmit
-			case "nullempty":
-				mode = eNull
-			default:
-				name = t
-			}
+	for _, t := range strings.Split(tag, ",") {
+		switch t {
+		case "keepempty":
+			mode = eKeep
+		case "omitempty":
+			mode = eOmit
+		case "nullempty":
+			mode = eNull
+		default:
+			name = t
 		}
 	}
 
