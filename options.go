@@ -9,12 +9,20 @@ const (
 	eNull
 )
 
+// EmptyFn is an empty field handler
+type EmptyFn func(in interface{}) (out interface{}, keep bool)
+
 // Options for the squint Builder
 type Options struct {
 	tag      string    // field tag to use
 	empty    emptyMode // how to treat empty field values
 	logQuery bool      // log queries?
 	logBinds bool      // log binds?
+	emptyFn  EmptyFn   // custom empty field handler
+
+	// deprecated
+	emptyValues bool
+	nilValues   bool
 }
 
 // Option is a functional option
@@ -74,5 +82,18 @@ func LogQuery(b bool) Option {
 func LogBinds(b bool) Option {
 	return func(o *Options) {
 		o.logBinds = b
+	}
+}
+
+// WithEmptyFn : use custom empty field handler:
+//
+// func(in interface{}) (out interface{}, keep bool)
+//
+// in - incoming value
+// out - outgoing value to use in SQL
+// keep - keep the value or skip it?
+func WithEmptyFn(fn EmptyFn) Option {
+	return func(o *Options) {
+		o.emptyFn = fn
 	}
 }

@@ -299,6 +299,10 @@ func (q *query) checkValue(in interface{}, mode emptyMode) (interface{}, bool) {
 	}
 
 	if mode == eDefault {
+		if fn := q.opt.emptyFn; fn != nil {
+			return fn(in)
+		}
+
 		mode = q.opt.empty
 	}
 
