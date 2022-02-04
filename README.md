@@ -155,13 +155,15 @@ type User struct {
 The `Builder` uses functional options to control behavior. They and their defaults are:
 
 ```go
-Tag(string)       // tag name for field mapping ("db")
-KeepEmpty()       // keep empty values in struct/map
-OmitEmpty()       // omit empty values in struct/map
-NullEmpty()       // treat empty values as nulls in struct/map
-LogQuery(bool)    // log queries (false)
-LogBinds(bool)    // log bind values from queries (false)
-Log(bool)         // shorthand to log both queries AND binds (false)
+Tag(string)                 // tag name for field mapping ("db")
+KeepEmpty()                 // keep empty values in struct/map
+OmitEmpty()                 // omit empty values in struct/map
+NullEmpty()                 // treat empty values as nulls in struct/map
+WithEmptyFn(squint.EmptyFn) // use a custom empty value handler
+WithDefaultEmpty()          // use default empty value handler
+LogQuery(bool)              // log queries (false)
+LogBinds(bool)              // log bind values from queries (false)
+Log(bool)                   // shorthand to log both queries AND binds (false)
 ```
 
 These can all be set via `NewBuilder()`:
@@ -208,6 +210,44 @@ type Updates struct {
 Now you can tell the difference between setting `Balance` to `0` or not setting it at all. With `omitempty`,  an empty `Balance` would be skipped, but a pointer to a `0` would be kept.
 
 **NOTE:** If `OmitEmpty()` is in effect for a multi-row inserts, `KeepEmpty()` will be used instead. This is because the column count must be consistent across rows. `NullEmpty()` and `KeepEmpty()` will be used as set.
+
+### Custom Empty Handler
+
+Squint can also use your custom handler functions for empty values. When an empty value is encountered, your function will be called instead of the default logic. This means that any custom function will override the behavior of the `KeepEmpty()`, `OmitEmpty()`, and `NullEmpty()` options. Any field-level tags will still be respected, however.
+
+A custom function looks like this:
+
+```go
+func(in interface{}) (out interface{}, keep bool)
+```
+
+The parameter `in` is the empty value in question. Your function should return `keep` which determines if the empty value should be kept, and `out` which is the value to use if kept.
+
+You register it via the `squint.WithEmptyFn()` option:
+
+```go
+// use "N/A" for empty strings, skip all other types
+func doEmpty(in interface{}) (out interface{}, keep bool) {
+  if s, ok := in.(string); ok {
+    return "N/A", true
+  }
+  
+  return nil, false
+}
+
+// set globally in Builder
+b := squint.NewBuilder(
+  squint.WithEmptyFn(doEmpty)
+)
+
+// override for single query
+b.Build(
+  squint.WithEmptyFn(otherEmpty),
+  "insert into users", newUser,
+)
+```
+
+To switch back to the default empty value handler, use the `WithDefaultEmpty()` option.
 
 ## Bridge
 

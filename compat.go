@@ -4,7 +4,8 @@ import (
 	"reflect"
 )
 
-// these provide compatibility for deprectated options
+// These provide backward compatibility for deprectated options.
+// Please do not use them for new code.
 
 // EmptyValues (DEPRECATED): keep empty string struct/map field values
 func EmptyValues(b bool) Option {

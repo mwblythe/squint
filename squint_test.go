@@ -108,6 +108,12 @@ func (s *SquintSuite) TestStruct() {
 			}{10, person{"Frank", "Gallagher"}},
 		)
 	})
+
+	s.Run("no-tag", func() {
+		b := NewBuilder(Tag(""))
+		_, binds := b.Build("SELECT", person{})
+		s.Len(binds, 2)
+	})
 }
 
 func (s *SquintSuite) TestMap() {
@@ -328,6 +334,66 @@ func (s *SquintSuite) TestEmpty() {
 				"SET", rec2,
 			)
 		}
+	})
+}
+
+func (s *SquintSuite) TestEmptyFn() {
+	type empty struct {
+		Int  int
+		Str  string
+		Bool bool
+		Ptr  interface{}
+	}
+
+	b := NewBuilder(
+		WithEmptyFn(func(in interface{}) (out interface{}, keep bool) {
+			return "beer", true
+		}),
+	)
+
+	s.Run("custom", func() {
+		s.NotNil(b.emptyFn)
+
+		_, vals := b.Build("SELECT", empty{})
+		s.EqualValues(
+			binds{"beer", "beer", "beer", "beer"},
+			vals,
+		)
+	})
+
+	s.Run("bulk", func() {
+		// do not keep empty strings
+		b.SetOption(WithEmptyFn(func(in interface{}) (out interface{}, keep bool) {
+			if _, ok := in.(string); ok {
+				return in, false
+			}
+
+			return in, true
+		}))
+
+		// string should be omitted
+		_, vals := b.Build("SELECT", empty{})
+		s.EqualValues(
+			binds{0, false, nil},
+			vals,
+		)
+
+		// bulk insert, all values kept
+		_, vals = b.Build("INSERT INTO foo", make([]empty, 2))
+		s.EqualValues(
+			binds{0, "", false, nil, 0, "", false, nil},
+			vals,
+		)
+	})
+
+	s.Run("default", func() {
+		b.SetOption(WithDefaultEmpty())
+
+		_, vals := b.Build("SELECT", empty{})
+		s.EqualValues(
+			binds{0, "", false, nil},
+			vals,
+		)
 	})
 }
 

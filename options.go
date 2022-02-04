@@ -97,3 +97,10 @@ func WithEmptyFn(fn EmptyFn) Option {
 		o.emptyFn = fn
 	}
 }
+
+// WithDefaultEmpty : use default empty field handler
+func WithDefaultEmpty() Option {
+	return func(o *Options) {
+		o.emptyFn = nil
+	}
+}
