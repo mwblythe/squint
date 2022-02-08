@@ -91,15 +91,3 @@ driver.Register("sqlite",
 ## See Also
 
 If the squint `driver` doesn't suit your needs, or doesn't work with your database driver, try a squint [bridge](../bridge).
-
-## Testing
-
-To run the unit tests for the `driver` package, you will need [Docker](https://www.docker.com/products/docker-desktop) and `docker-compose`. Then, simply run:
-
-```
-cd driver
-docker-compose up
-make test
-```
-
-There are currently tests for sqlite and mysql.

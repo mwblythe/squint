@@ -3,9 +3,9 @@ package driver_test
 import (
 	"context"
 	"database/sql"
-	"fmt"
-	"strings"
+	"testing"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/mwblythe/squint/driver"
 	"github.com/stretchr/testify/suite"
 )
@@ -21,26 +21,45 @@ func (b Bits) Split() (string, Bits) {
 
 type DriverSuite struct {
 	suite.Suite
-	driver string  // driver name to wrap
-	dsn    string  // dsn to open
-	db     *sql.DB // wrapped db handle
-	count  int64   // insert count
+	mock sqlmock.Sqlmock
+	db   *sql.DB
+}
+
+func TestDriver(t *testing.T) {
+	suite.Run(t, &DriverSuite{})
 }
 
 func (s *DriverSuite) SetupSuite() {
 	var err error
-	driver.Register(s.driver)
+	dsn := "driver-tests"
 
-	s.db, err = sql.Open("squint-"+s.driver, s.dsn)
+	_, mock, err := sqlmock.NewWithDSN(
+		dsn,
+		sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual),
+		sqlmock.MonitorPingsOption(true),
+	)
+
+	if err != nil {
+		s.FailNow("cannot create mock DB", err)
+		return
+	}
+
+	s.mock = mock
+	driver.Register("sqlmock")
+
+	s.db, err = sql.Open("squint-sqlmock", dsn)
 	if err != nil {
 		s.T().Fatal(err)
 	}
 }
 
-func (s *DriverSuite) TearDownSuite() {
-	s.db.Close()
+func (s *DriverSuite) TestPing() {
+	s.mock.ExpectPing()
+	s.Nil(s.db.PingContext(ctx))
+	s.Nil(s.mock.ExpectationsWereMet())
 }
 
+/*
 func (s *DriverSuite) TestDriver() {
 	s.Run("Ping", func() {
 		s.Nil(s.db.PingContext(ctx))
@@ -67,9 +86,6 @@ func (s *DriverSuite) TestDriver() {
 	s.Run("Transaction", func() {
 		s.Transaction()
 	})
-}
-
-func (s *DriverSuite) xTestFuzz() {
 }
 
 func (s *DriverSuite) InsertPerson() {
@@ -170,3 +186,4 @@ func (s *DriverSuite) Prepared() {
 		s.Equal(s.count, count)
 	})
 }
+*/
