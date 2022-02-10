@@ -11,7 +11,7 @@ var (
 	_ driver.Rows = (*sqRows)(nil)
 )
 
-// sqStmt is a sql.Rows wrapper to implement the driver.Rows interface
+// sqRows is a sql.Rows wrapper to implement the driver.Rows interface
 type sqRows struct {
 	*sql.Rows
 }
