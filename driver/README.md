@@ -88,4 +88,6 @@ driver.Register("sqlite",
 )
 ```
 
+## See Also
 
+The separate [squint-driver-tests](https://github.com/mwblythe/squint-driver-tests) module has compatibility tests for various databses.
