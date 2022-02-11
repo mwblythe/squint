@@ -88,6 +88,4 @@ driver.Register("sqlite",
 )
 ```
 
-## See Also
 
-If the squint `driver` doesn't suit your needs, or doesn't work with your database driver, try a squint [bridge](../bridge).
