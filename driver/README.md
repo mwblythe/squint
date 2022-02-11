@@ -47,7 +47,7 @@ func main() {
     log.Fatal(err)
   }
   defer db.Close()
-  
+
   // execute a query in the style of squint Builder
   rows, err := db.Query(
     "select id, name from users where id in", []int{10, 20, 30},
@@ -58,7 +58,7 @@ func main() {
 
 ## Limitations
 
-The standard `sql` query functions require a `string` as the first argument. This means you can't pass things like a `Builder` option or condition first. Instead, start with a fragment of your query, then anything compatible with `Builder` can come after:
+The standard `sql` query functions require a `string` before the binds. This means you can't pass things like a `Builder` option or condition first. Instead, start with a fragment of your query, then anything compatible with `Builder` can come after:
 
 ```go
 // this won't compile
@@ -90,4 +90,4 @@ driver.Register("sqlite",
 
 ## See Also
 
-The separate [squint-driver-tests](https://github.com/mwblythe/squint-driver-tests) module has compatibility tests for various databses.
+The separate [squint-driver-tests](https://github.com/mwblythe/squint-driver-tests) module has compatibility tests for various databases.
