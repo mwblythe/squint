@@ -53,17 +53,17 @@ func (d *sqDriver) Open(dsn string) (c driver.Conn, err error) {
 		db = i.(*sql.DB)
 	} else {
 		db, err = sql.Open(d.toDriver, dsn)
-		if err != nil {
-			return
+		if err == nil {
+			d.db.Store(dsn, db)
 		}
-
-		d.db.Store(dsn, db)
 	}
 
-	// build and return conn
-	conn, err := db.Conn(context.Background())
-	if err == nil {
-		c = newConn(conn, d.builder)
+	if db != nil && err == nil {
+		// build conn
+		conn, err := db.Conn(context.Background())
+		if err == nil {
+			c = newConn(conn, d.builder)
+		}
 	}
 
 	return

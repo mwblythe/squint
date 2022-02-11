@@ -23,10 +23,11 @@ func (r sqRows) Columns() []string {
 
 func (r sqRows) Next(dest []driver.Value) error {
 	if !r.Rows.Next() {
-		if err := r.Rows.Err(); err != nil {
-			return err
+		err := r.Rows.Err()
+		if err == nil {
+			err = io.EOF
 		}
-		return io.EOF
+		return err
 	}
 
 	into := make([]interface{}, len(dest))
@@ -34,14 +35,13 @@ func (r sqRows) Next(dest []driver.Value) error {
 		into[n] = new(interface{})
 	}
 
-	if err := r.Rows.Scan(into...); err != nil {
-		return err
+	err := r.Rows.Scan(into...)
+	if err == nil {
+		for n := range into {
+			v := into[n].(*interface{})
+			dest[n] = driver.Value(*v)
+		}
 	}
 
-	for n := range into {
-		v := into[n].(*interface{})
-		dest[n] = driver.Value(*v)
-	}
-
-	return nil
+	return err
 }

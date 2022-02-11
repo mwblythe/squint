@@ -136,6 +136,11 @@ func (s *SquintSuite) TestArray() {
 		"WHERE id IN ( ?, ? )", binds{1, 2},
 		"WHERE id IN", vals,
 	)
+
+	s.check(
+		"select ?, ?", binds{1, 2},
+		"select", []int{1, 2},
+	)
 }
 
 func (s *SquintSuite) TestInsert() {
