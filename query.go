@@ -44,24 +44,23 @@ func (s *sqlBinds) Add(args ...interface{}) {
 	s.vals = append(s.vals, args...)
 }
 
-// sqlContext tracks the state of the SQL as it is built, in order
-// to support special handling based on context
-type sqlContext uint8
+// sqlState is the state of the SQL as it is built,
+// to enable special handling of certain phrases.
+type sqlState uint8
 
-// supported contexts
+// SQL states
 const (
-	BASE sqlContext = iota
-	INSERT
-	SET
-	IN
+	stateBase sqlState = iota
+	stateInsert
+	stateSet
+	stateIn
 )
 
 var insertRX = regexp.MustCompile(`(?i)\b(INSERT|REPLACE)\s+(?:\w+\s+)*INTO\s+\S+\s*$`)
 var setRX = regexp.MustCompile(`(?i)\bSET\s*$`)
 var inRX = regexp.MustCompile(`(?i)\bIN\s*$`)
 
-// query represents a single SQL query that is being built.
-// The query type is the heavy lifter of the package
+// query represents a single SQL query that is being built
 type query struct {
 	opt   Options
 	sql   sqlBuf
@@ -70,19 +69,19 @@ type query struct {
 	keepAll bool // internal override of empty mode
 }
 
-// Context returns the query's current context
-func (q *query) Context() sqlContext {
+// state returns the query's current state
+func (q *query) state() sqlState {
 	if insertRX.MatchString(q.sql.val) {
-		return INSERT
+		return stateInsert
 	}
 	if setRX.MatchString(q.sql.val) {
-		return SET
+		return stateSet
 	}
 	if inRX.MatchString(q.sql.val) {
-		return IN
+		return stateIn
 	}
 
-	return BASE
+	return stateBase
 }
 
 // Add a piece to the query
@@ -119,7 +118,7 @@ func (q *query) Add(bit interface{}) {
 // Normal strings will be treated as SQL.
 // A string pointer (or Bind type) is treated as a bind value.
 func (q *query) addString(v reflect.Value) {
-	if /* q.Context() != BASE || */ v.Type() == reflect.TypeOf(Bind("")) {
+	if v.Type() == reflect.TypeOf(Bind("")) {
 		q.sql.Add("?")
 		q.binds.Add(v.String())
 	} else {
@@ -147,10 +146,10 @@ func (q *query) addPointer(v reflect.Value) {
 //
 // TODO: skip complex types? handle refs?
 func (q *query) addSlice(v reflect.Value) {
-	context := q.Context()
+	state := q.state()
 	ty := v.Type().Elem().Kind()
 
-	if context == IN {
+	if state == stateIn {
 		q.sql.Add("(")
 		for i := 0; i < v.Len(); i++ {
 			q.sql.Add("?")
@@ -160,7 +159,7 @@ func (q *query) addSlice(v reflect.Value) {
 			q.sql.Add("NULL")
 		}
 		q.sql.Add(")")
-	} else if context == INSERT && ty == reflect.Struct {
+	} else if state == stateInsert && ty == reflect.Struct {
 		// multi-row inserts MUST have the same number of binds per row
 		// so we keep all values
 		q.keepAll = true
@@ -185,18 +184,18 @@ func (q *query) addSlice(v reflect.Value) {
 	}
 }
 
-// addComlex adds a struct or map to the query. Handling varies by context.
+// addComplex adds a struct or map to the query
 func (q *query) addComplex(v reflect.Value) {
 	cols, binds := q.sift(&v)
 
-	switch q.Context() {
-	case INSERT:
+	switch q.state() {
+	case stateInsert:
 		if len(cols) > 0 {
 			q.sql.Add("( " + strings.Join(cols, ", ") + " ) VALUES ( ?")
 			q.sql.Add(strings.Repeat(", ?", len(cols)-1) + " )")
 			q.binds.Add(binds...)
 		}
-	case SET:
+	case stateSet:
 		for i, col := range cols {
 			if i > 0 {
 				q.sql.Add(",")
