@@ -27,6 +27,7 @@ func (r sqRows) Next(dest []driver.Value) error {
 		if err == nil {
 			err = io.EOF
 		}
+
 		return err
 	}
 

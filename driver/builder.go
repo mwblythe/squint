@@ -17,6 +17,7 @@ func newBuilder(b *squint.Builder) *builder {
 func (b *builder) BuildNamed(query string, inVals []driver.NamedValue) (string, []interface{}) {
 	bits := make([]interface{}, len(inVals)+1)
 	bits[0] = query
+
 	for n := range inVals {
 		bits[n+1] = inVals[n].Value
 	}

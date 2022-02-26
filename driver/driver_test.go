@@ -15,10 +15,8 @@ import (
 type H map[string]interface{}
 type Bits []interface{}
 
-var ctx = context.TODO()
-
 func (b Bits) Split() (context.Context, string, Bits) {
-	return ctx, b[0].(string), b[1:]
+	return context.Background(), b[0].(string), b[1:]
 }
 
 type DriverSuite struct {
@@ -26,6 +24,7 @@ type DriverSuite struct {
 	mock    sqlmock.Sqlmock
 	db      *sql.DB
 	builder *squint.Builder
+	ctx     context.Context
 }
 
 func TestDriver(t *testing.T) {
@@ -34,6 +33,7 @@ func TestDriver(t *testing.T) {
 
 func (s *DriverSuite) SetupSuite() {
 	var err error
+
 	dsn := "driver-tests"
 
 	_, mock, err := sqlmock.NewWithDSN(
@@ -47,6 +47,7 @@ func (s *DriverSuite) SetupSuite() {
 		return
 	}
 
+	s.ctx = context.Background()
 	s.mock = mock
 	s.builder = squint.NewBuilder()
 
@@ -60,7 +61,7 @@ func (s *DriverSuite) SetupSuite() {
 
 func (s *DriverSuite) TestPing() {
 	s.mock.ExpectPing()
-	s.Nil(s.db.PingContext(ctx))
+	s.Nil(s.db.PingContext(s.ctx))
 	s.Nil(s.mock.ExpectationsWereMet())
 }
 
@@ -84,11 +85,14 @@ func (s *DriverSuite) TestQuery() {
 
 	if s.NotNil(rows) {
 		defer rows.Close()
+
 		count := 0
 
 		for rows.Next() {
-			count++
 			var id int
+
+			count++
+
 			s.Nil(rows.Scan(&id))
 			s.NotEmpty(id)
 		}
@@ -124,7 +128,7 @@ func (s *DriverSuite) TestPrepare() {
 			sqlmock.NewRows([]string{"id"}).AddRow(10),
 		)
 
-		row := st.QueryRowContext(ctx, 10)
+		row := st.QueryRowContext(s.ctx, 10)
 		if s.NotNil(row) {
 			var id int
 			s.Nil(row.Scan(&id))
@@ -143,7 +147,7 @@ func (s *DriverSuite) TestPrepare() {
 		s.NotNil(st)
 
 		s.mock.ExpectExec(sql).WillReturnResult(sqlmock.NewResult(0, 1))
-		_, err = st.ExecContext(ctx)
+		_, err = st.ExecContext(s.ctx)
 		s.Nil(err)
 
 		s.Nil(s.mock.ExpectationsWereMet())
@@ -155,6 +159,7 @@ func (s *DriverSuite) getValues(in Bits) (out []sqldriver.Value) {
 	for i, v := range in {
 		out[i] = sqldriver.Value(v)
 	}
+
 	return
 }
 
@@ -162,12 +167,11 @@ func (s *DriverSuite) TearDownSuite() {
 	s.Nil(s.db.Close())
 }
 
+// Note that these deprecated driver functions are impossible to trigger
+// via the sql package if the newer Context versions exist. However, they
+// are still required to satisfy the driver interfaces. So, we find a way
+// to test them.
 func (s *DriverSuite) TestZDeprecated() {
-	// Note that these deprecated driver functions are impossible to trigger
-	// via the sql package if the newer Context versions exist. However, they
-	// are still required to satisfy the driver interfaces. So, we find a way
-	// to sort of test them.
-
 	drv := s.db.Driver()
 	s.NotNil(drv)
 

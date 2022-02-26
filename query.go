@@ -22,11 +22,12 @@ func (s *sqlBuf) Add(add string) {
 		last := s.val[L-1:]
 		first := add[0:1]
 
-		if last == "?" && first == last {
+		switch {
+		case last == "?" && first == last:
 			s.val += ", " + add
-		} else if first != "," && last != " " && first != " " {
+		case first != "," && last != " " && first != " ":
 			s.val += " " + add
-		} else {
+		default:
 			s.val += add
 		}
 	} else {
@@ -71,28 +72,23 @@ type query struct {
 
 // state returns the query's current state
 func (q *query) state() sqlState {
-	if insertRX.MatchString(q.sql.val) {
+	switch {
+	case insertRX.MatchString(q.sql.val):
 		return stateInsert
-	}
-	if setRX.MatchString(q.sql.val) {
+	case setRX.MatchString(q.sql.val):
 		return stateSet
-	}
-	if inRX.MatchString(q.sql.val) {
+	case inRX.MatchString(q.sql.val):
 		return stateIn
+	default:
+		return stateBase
 	}
-
-	return stateBase
 }
 
 // Add a piece to the query
 func (q *query) Add(bit interface{}) {
 	switch b := bit.(type) {
 	case Condition:
-		if b.isTrue {
-			for n := range b.bits {
-				q.Add(b.bits[n])
-			}
-		}
+		q.addCondition(b)
 	case Option:
 		q.opt.SetOption(b)
 	default:
@@ -114,6 +110,15 @@ func (q *query) Add(bit interface{}) {
 	}
 }
 
+// addCondition adds bits to the query if condition is true
+func (q *query) addCondition(c Condition) {
+	if c.isTrue {
+		for n := range c.bits {
+			q.Add(c.bits[n])
+		}
+	}
+}
+
 // addString adds a string to the query.
 // Normal strings will be treated as SQL.
 // A string pointer (or Bind type) is treated as a bind value.
@@ -128,14 +133,15 @@ func (q *query) addString(v reflect.Value) {
 
 // addPointer adds a pointer type to the query
 func (q *query) addPointer(v reflect.Value) {
-	if v.IsNil() {
+	switch {
+	case v.IsNil():
 		q.sql.Add("?")
 		q.binds.Add(nil)
-	} else if v.Elem().Kind() == reflect.String {
+	case v.Elem().Kind() == reflect.String:
 		// treat string reference as a bind
 		q.sql.Add("?")
 		q.binds.Add(v.Elem().Interface())
-	} else {
+	default:
 		q.Add(v.Elem().Interface())
 	}
 }
@@ -143,23 +149,25 @@ func (q *query) addPointer(v reflect.Value) {
 // addSlice adds the contents of a slice to the query.
 // Normally it will be flattened and handled as inline arguments.
 // Special handling for IN and multi-valued INSERT.
-//
-// TODO: skip complex types? handle refs?
 func (q *query) addSlice(v reflect.Value) {
 	state := q.state()
 	ty := v.Type().Elem().Kind()
 
-	if state == stateIn {
+	switch {
+	case state == stateIn:
 		q.sql.Add("(")
+
 		for i := 0; i < v.Len(); i++ {
 			q.sql.Add("?")
 			q.binds.Add(v.Index(i).Interface())
 		}
+
 		if v.Len() == 0 {
 			q.sql.Add("NULL")
 		}
+
 		q.sql.Add(")")
-	} else if state == stateInsert && ty == reflect.Struct {
+	case state == stateInsert && ty == reflect.Struct:
 		// multi-row inserts MUST have the same number of binds per row
 		// so we keep all values
 		q.keepAll = true
@@ -167,17 +175,19 @@ func (q *query) addSlice(v reflect.Value) {
 		for i := 0; i < v.Len(); i++ {
 			el := v.Index(i)
 			cols, binds := q.siftStruct(&el)
+
 			if i == 0 {
 				q.sql.Add("( " + strings.Join(cols, ", ") + " ) VALUES")
 			} else {
 				q.sql.Add(", ")
 			}
+
 			q.sql.Add("( ?" + strings.Repeat(", ?", len(cols)-1) + " )")
 			q.binds.Add(binds...)
 		}
 
 		q.keepAll = false
-	} else {
+	default:
 		for i := 0; i < v.Len(); i++ {
 			q.Add(v.Index(i).Interface())
 		}
@@ -185,7 +195,7 @@ func (q *query) addSlice(v reflect.Value) {
 }
 
 // addComplex adds a struct or map to the query
-func (q *query) addComplex(v reflect.Value) {
+func (q *query) addComplex(v reflect.Value) { //nolint
 	cols, binds := q.sift(&v)
 
 	switch q.state() {
@@ -200,6 +210,7 @@ func (q *query) addComplex(v reflect.Value) {
 			if i > 0 {
 				q.sql.Add(",")
 			}
+
 			q.sql.Add(col + " = ?")
 			q.binds.Add(binds[i])
 		}
@@ -222,15 +233,15 @@ func (q *query) addComplex(v reflect.Value) {
 }
 
 // sift a map or struct into cols + binds
-func (q *query) sift(v *reflect.Value) ([]string, []interface{}) {
+func (q *query) sift(v *reflect.Value) (cols []string, binds []interface{}) {
 	switch v.Kind() {
 	case reflect.Struct:
-		return q.siftStruct(v)
+		cols, binds = q.siftStruct(v)
 	case reflect.Map:
-		return q.siftMap(v)
-	default:
-		return []string{}, []interface{}{}
+		cols, binds = q.siftMap(v)
 	}
+
+	return
 }
 
 // siftMap will sift a map into cols + binds
@@ -303,6 +314,7 @@ func (q *query) checkValue(in interface{}, mode emptyMode) (interface{}, bool) {
 			if q.keepAll {
 				keep = true
 			}
+
 			return out, keep
 		}
 
@@ -326,6 +338,7 @@ func (q *query) tagValue(field reflect.StructField) string {
 	if q.opt.tag != "" {
 		return field.Tag.Get(q.opt.tag)
 	}
+
 	return ""
 }
 

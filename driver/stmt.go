@@ -35,12 +35,14 @@ func (s sqStmt) NumInput() int {
 func (s sqStmt) Query(args []driver.Value) (driver.Rows, error) {
 	newArgs := valsToIface(args)
 	r, err := s.Stmt.Query(newArgs...)
+
 	return sqRows{r}, err
 }
 
 func (s sqStmt) QueryContext(ctx context.Context, args []driver.NamedValue) (driver.Rows, error) {
 	newArgs := namedToIface(args)
 	r, err := s.Stmt.QueryContext(ctx, newArgs...)
+
 	return sqRows{r}, err
 }
 
@@ -50,6 +52,7 @@ func valsToIface(in []driver.Value) (out []interface{}) {
 	for n := range in {
 		out[n] = in[n]
 	}
+
 	return
 }
 
@@ -59,5 +62,6 @@ func namedToIface(in []driver.NamedValue) (out []interface{}) {
 	for n := range in {
 		out[n] = in[n].Value
 	}
+
 	return
 }

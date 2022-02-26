@@ -1,6 +1,24 @@
 [linters]
-disable-all = true
-enable = [ "staticcheck", "golint" ]
+enable-all = true
+disable = [
+	"interfacer",
+	"gosec",
+	"golint",
+	"godot",
+	"scopelint",
+	"maligned",
+	"nakedret",
+	"paralleltest",
+	"varnamelen",
+	"exhaustive",
+	"exhaustivestruct",
+	"wrapcheck",
+	"gofumpt",
+	"forcetypeassert",
 
-[issues]
-include = [ "EXC0002" ]
+	"sqlclosecheck",
+	"rowserrcheck",
+]
+
+[linters-settings.nlreturn]
+block-size = 2

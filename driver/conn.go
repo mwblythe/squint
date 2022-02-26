@@ -67,5 +67,6 @@ func (c *sqConn) ExecContext(ctx context.Context, query string, args []driver.Na
 func (c *sqConn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
 	query, binds := c.builder.BuildNamed(query, args)
 	r, err := c.conn.QueryContext(ctx, query, binds...)
+
 	return sqRows{r}, err
 }

@@ -23,8 +23,10 @@ type Builder struct {
 // NewBuilder returns a new Builder with the supplied options
 func NewBuilder(options ...Option) *Builder {
 	var b Builder
+
 	b.SetOption(Tag("db"), KeepEmpty())
 	b.SetOption(options...)
+
 	return &b
 }
 

@@ -1,11 +1,14 @@
-package squint
+package squint_test
+
+import "github.com/mwblythe/squint"
 
 func (s *SquintSuite) TestCompat() {
-	b1 := NewBuilder(EmptyValues(false), NilValues(false))
-	b2 := NewBuilder(EmptyValues(true), NilValues(true))
+	b1 := squint.NewBuilder(squint.EmptyValues(false), squint.NilValues(false))
+	b2 := squint.NewBuilder(squint.EmptyValues(true), squint.NilValues(true))
 
 	// test maps
 	var bar *bool
+
 	s.True(b1.HasValues(H{"age": 10}))
 	s.True(b1.HasValues(H{"age": 0}))
 	s.False(b1.HasValues(H{"name": ""}))
@@ -20,6 +23,7 @@ func (s *SquintSuite) TestCompat() {
 
 	// test structs
 	var junk struct{}
+
 	type trunk struct {
 		Name string
 	}

@@ -1,3 +1,4 @@
+// Package driver enables the use of squint Build() syntax in standard sql/database query functions.
 package driver
 
 import (

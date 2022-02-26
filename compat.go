@@ -33,8 +33,8 @@ func compatEmpty(emptyValues, nilValues bool) EmptyFn {
 			return in, emptyValues
 		case reflect.Ptr, reflect.Map, reflect.Slice, reflect.Invalid:
 			return nil, nilValues
+		default:
+			return in, true
 		}
-
-		return in, true
 	}
 }
