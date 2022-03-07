@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `database/sql` package is very capable but somewhat tedious to use. You must hand-write full SQL queries with bind placeholders and provide a matching ordered list of variables. It's familiar, but inconvenient and repetitive. Squint makes things easier by allowing SQL and bind variables to be intermixed in their natural order. It also interpolates the variables into the proper bind placeholders and values, including complex types like structs and maps.  Squint is not an ORM, though. It's merely a pleasant query building assistant.
+The `database/sql` package is powerful but somewhat tedious to use. You must hand-write full SQL queries with bind placeholders and provide a matching ordered list of variables. It's familiar, but inconvenient and repetitive. Squint makes things easier by allowing SQL and bind variables to be intermixed in their natural order. It also interpolates the variables into the proper bind placeholders and values, including complex types like structs and maps.  Squint is not an ORM, though. It's merely a pleasant query building assistant.
 
 ## Builder
 
@@ -156,17 +156,22 @@ type User struct {
 
 The `Builder` uses functional options to control behavior:
 
-| Option                       | Purpose                                   | Default |
-| ---------------------------- | ----------------------------------------- | ------- |
-| `Tag(string)`                | tag name for field mapping                | "db"    |
-| `KeepEmpty()`                | keep empty values in struct/map           | On      |
-| `OmitEmpty()`                | omit empty values in struct/map           | Off     |
-| `NullEmpty()`                | treat empty values as nulls in struct/map | Off     |
-| `WithEmptyFn(squint.EmptyFn)`| use a custom empty value handler          | nil     |
-| `WithDefaultEmpty()`         | use default empty value handler           | On      |
-| `LogQuery(bool)`             | log queries                               | `false` |
-| `LogBinds(bool)`             | log bind values                           | `false` |
-| `Log(bool)`                  | shorthand to log both queries AND binds   | `false` |
+| Option                        | Purpose                                                 | Default |
+| ----------------------------- | ------------------------------------------------------- | ------- |
+| `Tag(string)`                 | tag name for field mapping                              | "db"    |
+| `KeepEmpty()`                 | keep empty values in struct/map                         | On      |
+| `OmitEmpty()`                 | omit empty values in struct/map                         | Off     |
+| `NullEmpty()`                 | treat empty values as nulls in struct/map               | Off     |
+| `WithEmptyFn(squint.EmptyFn)` | use a custom empty value handler                        | nil     |
+| `WithDefaultEmpty()`          | use default empty value handler                         | On      |
+| `LogQuery(bool)`              | log queries                                             | `false` |
+| `LogBinds(bool)`              | log bind values                                         | `false` |
+| `Log(bool)`                   | shorthand to log both queries AND binds                 | `false` |
+| `BindQuestion()`              | use `?` as bind placeholders (mysql, sqlite)            | On      |
+| `BindDollar()`                | use `$1, $2` style bind placeholders (postgres, sqlite) | Off     |
+| `BindAt()`                    | use `@p1, @p2` style placeholders (sqlserver)           | Off     |
+| `BindColon()`                 | use `:b1, :b2` style placeholders (oracle)              | Off     |
+| `WithBindFn(squint.BindFn)`   | use a custom bind placeholder function                  | Off     |
 
 These can all be set via `NewBuilder()`:
 
@@ -177,7 +182,7 @@ b := squint.NewBuilder(
 )
 ```
 
-They can also be set via `Build()`, and will only be in effect for that query:
+They can also be set via `Build()` and will only be in effect for that query:
 
 ```go
 b.Build(
