@@ -96,3 +96,8 @@ func (b *Builder) HasValues(src interface{}) bool {
 		return true
 	}
 }
+
+// Binder returns a bind placeholder. Used for testing.
+func (b *Builder) Binder(seq int) string {
+	return b.bindFn(seq)
+}
