@@ -1,6 +1,7 @@
 package squint
 
 import (
+	"fmt"
 	"reflect"
 	"regexp"
 	"sort"
@@ -9,7 +10,8 @@ import (
 
 // sqlBuf is a buffer with some smarts for building up SQL
 type sqlBuf struct {
-	val string
+	val         string
+	lastWasBind bool
 }
 
 // Add appends a fragment to the SQL buffer (with separators where appropriate)
@@ -22,27 +24,16 @@ func (s *sqlBuf) Add(add string) {
 		last := s.val[L-1:]
 		first := add[0:1]
 
-		switch {
-		case last == "?" && first == last:
-			s.val += ", " + add
-		case first != "," && last != " " && first != " ":
+		if first != "," && last != " " && first != " " {
 			s.val += " " + add
-		default:
+		} else {
 			s.val += add
 		}
 	} else {
 		s.val = add
 	}
-}
 
-// sqlBinds is used for collecting SQL bind values
-type sqlBinds struct {
-	vals []interface{}
-}
-
-// Add appends a bind to the collection
-func (s *sqlBinds) Add(args ...interface{}) {
-	s.vals = append(s.vals, args...)
+	s.lastWasBind = false
 }
 
 // sqlState is the state of the SQL as it is built,
@@ -65,7 +56,7 @@ var inRX = regexp.MustCompile(`(?i)\bIN\s*$`)
 type query struct {
 	opt   Options
 	sql   sqlBuf
-	binds sqlBinds
+	binds []interface{}
 
 	keepAll bool // internal override of empty mode
 }
@@ -104,9 +95,20 @@ func (q *query) Add(bit interface{}) {
 		case reflect.Map, reflect.Struct:
 			q.addComplex(v)
 		default:
-			q.sql.Add("?")
-			q.binds.Add(bit)
+			q.addBind(bit)
 		}
+	}
+}
+
+func (q *query) addBind(values ...interface{}) {
+	for _, v := range values {
+		if q.sql.lastWasBind {
+			q.sql.Add(", ")
+		}
+
+		q.sql.Add(q.opt.bindFn(len(q.binds) + 1))
+		q.binds = append(q.binds, v)
+		q.sql.lastWasBind = true
 	}
 }
 
@@ -124,8 +126,7 @@ func (q *query) addCondition(c Condition) {
 // A string pointer (or Bind type) is treated as a bind value.
 func (q *query) addString(v reflect.Value) {
 	if v.Type() == reflect.TypeOf(Bind("")) {
-		q.sql.Add("?")
-		q.binds.Add(v.String())
+		q.addBind(v.String())
 	} else {
 		q.sql.Add(v.String())
 	}
@@ -135,12 +136,10 @@ func (q *query) addString(v reflect.Value) {
 func (q *query) addPointer(v reflect.Value) {
 	switch {
 	case v.IsNil():
-		q.sql.Add("?")
-		q.binds.Add(nil)
+		q.addBind(nil)
 	case v.Elem().Kind() == reflect.String:
 		// treat string reference as a bind
-		q.sql.Add("?")
-		q.binds.Add(v.Elem().Interface())
+		q.addBind(v.Elem().Interface())
 	default:
 		q.Add(v.Elem().Interface())
 	}
@@ -158,8 +157,7 @@ func (q *query) addSlice(v reflect.Value) {
 		q.sql.Add("(")
 
 		for i := 0; i < v.Len(); i++ {
-			q.sql.Add("?")
-			q.binds.Add(v.Index(i).Interface())
+			q.addBind(v.Index(i).Interface())
 		}
 
 		if v.Len() == 0 {
@@ -179,11 +177,12 @@ func (q *query) addSlice(v reflect.Value) {
 			if i == 0 {
 				q.sql.Add("( " + strings.Join(cols, ", ") + " ) VALUES")
 			} else {
-				q.sql.Add(", ")
+				q.sql.Add(",")
 			}
 
-			q.sql.Add("( ?" + strings.Repeat(", ?", len(cols)-1) + " )")
-			q.binds.Add(binds...)
+			q.sql.Add("(")
+			q.addBind(binds...)
+			q.sql.Add(")")
 		}
 
 		q.keepAll = false
@@ -201,9 +200,9 @@ func (q *query) addComplex(v reflect.Value) { //nolint
 	switch q.state() {
 	case stateInsert:
 		if len(cols) > 0 {
-			q.sql.Add("( " + strings.Join(cols, ", ") + " ) VALUES ( ?")
-			q.sql.Add(strings.Repeat(", ?", len(cols)-1) + " )")
-			q.binds.Add(binds...)
+			q.sql.Add("( " + strings.Join(cols, ", ") + " ) VALUES (")
+			q.addBind(binds...)
+			q.sql.Add(")")
 		}
 	case stateSet:
 		for i, col := range cols {
@@ -211,8 +210,8 @@ func (q *query) addComplex(v reflect.Value) { //nolint
 				q.sql.Add(",")
 			}
 
-			q.sql.Add(col + " = ?")
-			q.binds.Add(binds[i])
+			q.sql.Add(col + " = ")
+			q.addBind(binds[i])
 		}
 	default:
 		for i, col := range cols {
@@ -225,8 +224,8 @@ func (q *query) addComplex(v reflect.Value) { //nolint
 				q.sql.Add(col + " IN")
 				q.addSlice(bv)
 			default:
-				q.sql.Add(col + " = ?")
-				q.binds.Add(binds[i])
+				q.sql.Add(col + " = ")
+				q.addBind(binds[i])
 			}
 		}
 	}
@@ -374,4 +373,20 @@ func (q *query) mapField(field reflect.StructField) (name string, mode emptyMode
 	}
 
 	return
+}
+
+func bindQuestion(int) string {
+	return "?"
+}
+
+func bindAt(seq int) string {
+	return fmt.Sprintf("@p%d", seq)
+}
+
+func bindDollar(seq int) string {
+	return fmt.Sprintf("$%d", seq)
+}
+
+func bindColon(seq int) string {
+	return fmt.Sprintf(":b%d", seq)
 }

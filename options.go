@@ -12,6 +12,9 @@ const (
 // EmptyFn is an empty field handler
 type EmptyFn func(in interface{}) (out interface{}, keep bool)
 
+// BindFn is a bind placholder handler
+type BindFn func(pos int) string
+
 // Options for the squint Builder
 type Options struct {
 	tag      string    // field tag to use
@@ -19,6 +22,7 @@ type Options struct {
 	logQuery bool      // log queries?
 	logBinds bool      // log binds?
 	emptyFn  EmptyFn   // custom empty field handler
+	bindFn   BindFn    // bind placeholder handler
 
 	// deprecated
 	emptyValues bool
@@ -102,5 +106,44 @@ func WithEmptyFn(fn EmptyFn) Option {
 func WithDefaultEmpty() Option {
 	return func(o *Options) {
 		o.emptyFn = nil
+	}
+}
+
+// BindQuestion uses ? as placeholder (MySQL, sqlite)
+func BindQuestion() Option {
+	return func(o *Options) {
+		o.bindFn = bindQuestion
+	}
+}
+
+// BindAt uses @p1, @p2 style placeholders (sqlserver)
+func BindAt() Option {
+	return func(o *Options) {
+		o.bindFn = bindAt
+	}
+}
+
+// BindDollar uses $1, $2 style placeholders (postgres, sqlite)
+func BindDollar() Option {
+	return func(o *Options) {
+		o.bindFn = bindDollar
+	}
+}
+
+// BindColon uses :b1, :b2 style placeholders (oracle)
+func BindColon() Option {
+	return func(o *Options) {
+		o.bindFn = bindColon
+	}
+}
+
+// WithBindFn uses a custom bind placeholder function of the form:
+//
+// func(seq int) string
+//
+// where seq is a 1-based bind sequence
+func WithBindFn(fn BindFn) Option {
+	return func(o *Options) {
+		o.bindFn = fn
 	}
 }

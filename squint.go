@@ -24,7 +24,7 @@ type Builder struct {
 func NewBuilder(options ...Option) *Builder {
 	var b Builder
 
-	b.SetOption(Tag("db"), KeepEmpty())
+	b.SetOption(Tag("db"), BindQuestion(), KeepEmpty())
 	b.SetOption(options...)
 
 	return &b
@@ -49,10 +49,10 @@ func (b *Builder) Build(bits ...interface{}) (string, []interface{}) {
 	}
 
 	if q.opt.logBinds {
-		log.Println("BINDS:", q.binds.vals)
+		log.Println("BINDS:", q.binds)
 	}
 
-	return q.sql.val, q.binds.vals
+	return q.sql.val, q.binds
 }
 
 // If allows for conditionally including a list of arguments in a query.

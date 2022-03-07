@@ -2,6 +2,7 @@ package squint_test
 
 import (
 	"bytes"
+	"fmt"
 	"log"
 	"testing"
 
@@ -409,4 +410,19 @@ func (s *SquintSuite) check(wantSQL string, wantBinds interface{}, args ...inter
 	sql, binds := s.q.Build(args...)
 	s.Equal(wantSQL, sql)
 	s.Equal(wantBinds, binds)
+}
+
+func (s *SquintSuite) TestBinds() {
+	check := func(want string, opt squint.Option) {
+		s.check(want, binds{1, 2}, opt, "select", 1, 2)
+	}
+
+	check("select ?, ?", squint.BindQuestion())
+	check("select @p1, @p2", squint.BindAt())
+	check("select $1, $2", squint.BindDollar())
+	check("select :b1, :b2", squint.BindColon())
+
+	check("select {1}, {2}", squint.WithBindFn(func(pos int) string {
+		return fmt.Sprintf("{%d}", pos)
+	}))
 }
