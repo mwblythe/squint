@@ -1,6 +1,7 @@
 package squint
 
 import (
+	sqldriver "database/sql/driver"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -77,6 +78,11 @@ func (q *query) state() sqlState {
 
 // Add a piece to the query
 func (q *query) Add(bit interface{}) {
+	if _, ok := bit.(sqldriver.Valuer); ok {
+		q.addBind(bit)
+		return
+	}
+
 	switch b := bit.(type) {
 	case Condition:
 		q.addCondition(b)
@@ -194,7 +200,7 @@ func (q *query) addSlice(v reflect.Value) {
 }
 
 // addComplex adds a struct or map to the query
-func (q *query) addComplex(v reflect.Value) { //nolint
+func (q *query) addComplex(v reflect.Value) {
 	cols, binds := q.sift(&v)
 
 	switch q.state() {
@@ -302,7 +308,16 @@ func (q *query) siftStruct(src *reflect.Value) ([]string, []interface{}) {
 // keepValue determines whether a given value should be kept when sifting
 // a struct or map into columns and binds. This is controlled by the empty mode.
 func (q *query) checkValue(in interface{}, mode emptyMode) (interface{}, bool) {
-	v := reflect.ValueOf(in)
+	var v reflect.Value
+
+	if valuer, ok := in.(sqldriver.Valuer); ok {
+		if val, err := valuer.Value(); err == nil {
+			v = reflect.ValueOf(val)
+		}
+	} else {
+		v = reflect.ValueOf(in)
+	}
+
 	if v.IsValid() && !v.IsZero() {
 		return in, true
 	}

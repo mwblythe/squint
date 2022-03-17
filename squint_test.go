@@ -2,6 +2,7 @@ package squint_test
 
 import (
 	"bytes"
+	"database/sql"
 	"fmt"
 	"log"
 	"testing"
@@ -425,4 +426,25 @@ func (s *SquintSuite) TestBinds() {
 	check("select {1}, {2}", squint.WithBindFn(func(pos int) string {
 		return fmt.Sprintf("{%d}", pos)
 	}))
+
+	s.Equal("?", s.q.Binder(1))
+}
+
+func (s *SquintSuite) TestValuer() {
+	var val sql.NullString
+
+	s.check("update table set col = ?", binds{val}, "update table set col =", val)
+
+	var record struct {
+		Name sql.NullString
+	}
+
+	s.check("update table set Name = ?", binds{record.Name}, "update table set", record)
+
+	builder := squint.NewBuilder(squint.OmitEmpty())
+	s.False(builder.HasValues(record))
+
+	record.Name.String = "Frank"
+	record.Name.Valid = true
+	s.True(builder.HasValues(record))
 }
