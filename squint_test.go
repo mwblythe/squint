@@ -2,6 +2,7 @@ package squint
 
 import (
 	"bytes"
+	"database/sql"
 	"log"
 	"reflect"
 	"testing"
@@ -401,4 +402,23 @@ func (s *SquintSuite) check(wantSQL string, wantBinds interface{}, args ...inter
 	sql, binds := s.q.Build(args...)
 	s.Equal(wantSQL, sql)
 	s.Equal(wantBinds, binds)
+}
+
+func (s *SquintSuite) TestValuer() {
+	var val sql.NullString
+
+	s.check("update table set col = ?", binds{val}, "update table set col =", val)
+
+	var record struct {
+		Name sql.NullString
+	}
+
+	s.check("update table set Name = ?", binds{record.Name}, "update table set", record)
+
+	builder := NewBuilder(OmitEmpty())
+	s.False(builder.HasValues(record))
+
+	record.Name.String = "Frank"
+	record.Name.Valid = true
+	s.True(builder.HasValues(record))
 }
