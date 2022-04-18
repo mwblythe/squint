@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	"errors"
 	"sync"
 
 	"github.com/mwblythe/squint"
@@ -14,6 +15,8 @@ import (
 var (
 	_ driver.Driver = (*sqDriver)(nil)
 )
+
+var ErrNoDB = errors.New("no database connection")
 
 // Register a sql driver to produce a squint-enabled version.
 //
@@ -59,12 +62,19 @@ func (d *sqDriver) Open(dsn string) (c driver.Conn, err error) {
 		}
 	}
 
-	if db != nil && err == nil {
-		// build conn
-		conn, err := db.Conn(context.Background())
-		if err == nil {
-			c = newConn(conn, d.builder)
-		}
+	if err != nil {
+		return
+	}
+
+	if db == nil {
+		err = ErrNoDB
+		return
+	}
+
+	// build conn
+	conn, err := db.Conn(context.Background())
+	if err == nil && conn != nil {
+		c = newConn(conn, d.builder)
 	}
 
 	return
