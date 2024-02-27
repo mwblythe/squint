@@ -378,7 +378,9 @@ func (q *query) mapField(field reflect.StructField) (name string, mode emptyMode
 		case "nullempty":
 			mode = eNull
 		default:
-			name = t
+			if name == "" {
+				name = t
+			}
 		}
 	}
 
