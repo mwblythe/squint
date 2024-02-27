@@ -14,6 +14,11 @@ type Condition struct {
 	bits   []interface{}
 }
 
+// IsTrue returns whether the condition is true
+func (c Condition) IsTrue() bool {
+	return c.isTrue
+}
+
 // Builder is the core of public squint interactions.
 // It's responsible for processing inputs into SQL and binds
 type Builder struct {
@@ -36,7 +41,6 @@ func NewBuilder(options ...Option) *Builder {
 // the sql (or sqlx) package.
 //
 // sql, binds := b.Build("INSERT INTO users", &User)
-//
 func (b *Builder) Build(bits ...interface{}) (string, []interface{}) {
 	q := query{opt: b.Options}
 
@@ -59,14 +63,15 @@ func (b *Builder) Build(bits ...interface{}) (string, []interface{}) {
 // This is a convenience to allow a bit of inline logic when calling Build:
 //
 // sql, binds := b.Build(
-//   "SELECT u.* FROM users u",
-//   b.If(
-//     EmployeesOnly,
-//     "JOIN employees e ON u.id = e.id"
-//   ),
-//   "WHERE id IN", ids
-// )
 //
+//	"SELECT u.* FROM users u",
+//	b.If(
+//	  EmployeesOnly,
+//	  "JOIN employees e ON u.id = e.id"
+//	),
+//	"WHERE id IN", ids
+//
+// )
 func (b *Builder) If(condition bool, bits ...interface{}) Condition {
 	return If(condition, bits...)
 }

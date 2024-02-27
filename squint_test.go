@@ -253,6 +253,9 @@ func (s *SquintSuite) TestIf() {
 
 	s.check("SELECT ?", binds{20}, "SELECT", s.q.If(false, 10), 20)
 	s.check("SELECT ?, ?", binds{10, 20}, "SELECT", s.q.If(true, 10), 20)
+
+	s.True(s.q.If(true, "true").IsTrue())
+	s.False(s.q.If(false, "false").IsTrue())
 }
 
 func (s *SquintSuite) TestLog() {
