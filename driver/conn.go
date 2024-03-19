@@ -15,6 +15,7 @@ var (
 	_ driver.ConnPrepareContext = (*sqConn)(nil)
 	_ driver.ConnBeginTx        = (*sqConn)(nil)
 	_ driver.NamedValueChecker  = (*sqConn)(nil)
+	_ driver.Validator          = (*sqConn)(nil)
 )
 
 // sqConn is a proxy that will pre-process queries with squint Builder
@@ -69,4 +70,8 @@ func (c *sqConn) QueryContext(ctx context.Context, query string, args []driver.N
 	r, err := c.conn.QueryContext(ctx, query, binds...)
 
 	return sqRows{r}, err
+}
+
+func (c *sqConn) IsValid() bool {
+	return c.conn.PingContext(context.Background()) != nil
 }
