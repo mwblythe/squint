@@ -73,5 +73,5 @@ func (c *sqConn) QueryContext(ctx context.Context, query string, args []driver.N
 }
 
 func (c *sqConn) IsValid() bool {
-	return c.conn.PingContext(context.Background()) != nil
+	return c.conn.PingContext(context.Background()) == nil
 }
