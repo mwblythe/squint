@@ -21,10 +21,11 @@ var (
 type sqConn struct {
 	conn    *sql.Conn
 	builder *builder
+	dsn     string
 }
 
-func newConn(c *sql.Conn, b *builder) *sqConn {
-	return &sqConn{conn: c, builder: b}
+func newConn(c *sql.Conn, b *builder, dsn string) *sqConn {
+	return &sqConn{conn: c, builder: b, dsn: dsn}
 }
 
 func (c *sqConn) CheckNamedValue(*driver.NamedValue) error {
