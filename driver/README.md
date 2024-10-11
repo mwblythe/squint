@@ -93,8 +93,8 @@ driver.Register("sqlite",
 Because the `squint` driver acts as a proxy, connection settings must be in sync on both sides. So, please use the following functions instead of the `sql.DB` methods.
 
 ```go
-SetConnMaxIdleTime(*sql.DB, time.Duration)
-SetConnMaxLifetime(*sql.DB, time.Duration)
+driver.SetConnMaxIdleTime(*sql.DB, time.Duration)
+driver.SetConnMaxLifetime(*sql.DB, time.Duration)
 ```
 
 This will set the corresponding value on both your `sql.DB` handle as well as the underlying one that is wrapped by the `squint` proxy driver.
