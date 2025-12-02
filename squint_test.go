@@ -3,6 +3,7 @@ package squint_test
 import (
 	"bytes"
 	"database/sql"
+	"database/sql/driver"
 	"fmt"
 	"log"
 	"testing"
@@ -14,6 +15,12 @@ import (
 // conveniences
 type binds = []interface{}
 type H = map[string]interface{}
+
+type valString string
+
+func (v valString) Value() (driver.Value, error) {
+	return string(v), nil
+}
 
 type SquintSuite struct {
 	suite.Suite
@@ -447,4 +454,11 @@ func (s *SquintSuite) TestValuer() {
 	record.Name.String = "Frank"
 	record.Name.Valid = true
 	s.True(builder.HasValues(record))
+
+	s.NotPanics(func() {
+		var val2 *valString
+		builder.Build("update table set", map[string]interface{}{
+			"name": val2,
+		})
+	})
 }
