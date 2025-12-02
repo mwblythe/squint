@@ -88,10 +88,16 @@ func (q *query) Context() sqlContext {
 
 // Add a piece to the query
 func (q *query) Add(bit interface{}) {
-	if _, ok := bit.(sqldriver.Valuer); ok {
-		q.sql.Add("?")
-		q.binds.Add(bit)
-		return
+	if valuer, ok := bit.(sqldriver.Valuer); ok {
+		// check if the valuer is a nil pointer
+		v := reflect.ValueOf(valuer)
+		if v.Kind() == reflect.Ptr && v.IsNil() {
+			// treat nil valuers as regular nil values
+		} else {
+			q.sql.Add("?")
+			q.binds.Add(bit)
+			return
+		}
 	}
 
 	switch b := bit.(type) {
@@ -303,7 +309,11 @@ func (q *query) checkValue(in interface{}, mode emptyMode) (interface{}, bool) {
 	var v reflect.Value
 
 	if valuer, ok := in.(sqldriver.Valuer); ok {
-		if val, err := valuer.Value(); err == nil {
+		// check if the valuer is a nil pointer before calling Value()
+		rv := reflect.ValueOf(valuer)
+		if rv.Kind() == reflect.Ptr && rv.IsNil() {
+			v = rv
+		} else if val, err := valuer.Value(); err == nil {
 			v = reflect.ValueOf(val)
 		}
 	} else {
